@@ -22,7 +22,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
             <span class="greeting-icon">{{ greetingIcon }}</span>
             <span>{{ greeting }}</span>
           </div>
-          <h1 class="hero-title">{{ teacher?.full_name || 'O\'qituvchi' }} 👋</h1>
+          <h1 class="hero-title">{{ teacher?.full_name || "O'qituvchi" }} 👋</h1>
           <p class="hero-sub">Bugun ham muvaffaqiyatli kun bo'lsin! Platformadagi barcha ma'lumotlar quyida.</p>
           <div class="hero-btns">
             <a routerLink="/modules" mat-flat-button class="btn-primary-hero">

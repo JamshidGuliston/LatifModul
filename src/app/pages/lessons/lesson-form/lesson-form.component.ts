@@ -17,13 +17,14 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { LanguageService } from '../../../core/services/language.service';
+import { QuillModule } from 'ngx-quill';
 
 @Component({
   selector: 'app-lesson-form',
   imports: [
     FormsModule, MatCardModule, MatFormFieldModule, MatInputModule,
     MatButtonModule, MatSlideToggleModule, MatIconModule, MatTabsModule,
-    MatSelectModule,
+    MatSelectModule, QuillModule,
     TranslatePipe, LoadingSpinnerComponent
   ],
   template: `
@@ -73,12 +74,14 @@ import { LanguageService } from '../../../core/services/language.service';
                     </div>
 
                     <div class="input-group">
-                      <label for="description">{{ 'common.description' | translate }}</label>
-                      <div class="input-wrapper textarea-wrapper">
-                        <mat-icon>notes</mat-icon>
-                        <textarea id="description" [(ngModel)]="form.description" name="description" 
-                                  rows="4" placeholder="Dars haqida qisqacha ma'lumot"></textarea>
-                      </div>
+                      <label>{{ 'common.description' | translate }}</label>
+                      <quill-editor
+                        [(ngModel)]="form.description"
+                        name="description"
+                        [modules]="quillModules"
+                        placeholder="Dars haqida qisqacha ma'lumot"
+                        class="quill-editor">
+                      </quill-editor>
                     </div>
 
                     <div class="form-grid">
@@ -405,6 +408,44 @@ import { LanguageService } from '../../../core/services/language.service';
 
       @media (max-width: 768px) {
         grid-template-columns: 1fr;
+      }
+    }
+
+    .quill-editor {
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1.5px solid var(--gray-200);
+      transition: border-color 0.2s;
+
+      &:focus-within {
+        border-color: var(--primary-400);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
+      ::ng-deep .ql-toolbar {
+        border: none;
+        border-bottom: 1px solid var(--gray-200);
+        background: var(--gray-50);
+        padding: 8px 12px;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      }
+
+      ::ng-deep .ql-container {
+        border: none;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.95rem;
+        min-height: 160px;
+      }
+
+      ::ng-deep .ql-editor {
+        min-height: 160px;
+        padding: 14px 16px;
+        color: var(--gray-800);
+
+        &.ql-blank::before {
+          color: var(--gray-400);
+          font-style: normal;
+        }
       }
     }
 
@@ -794,6 +835,19 @@ export class LessonFormComponent implements OnInit {
   private lessonService = inject(LessonService);
   private contentService = inject(ContentService);
   private dialog = inject(MatDialog);
+
+  quillModules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ color: [] }, { background: [] }],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      [{ align: [] }],
+      ['blockquote', 'code-block'],
+      ['link', 'image'],
+      ['clean']
+    ]
+  };
 
   isEdit = signal(false);
   loading = signal(false);

@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { StripHtmlPipe } from '../../shared/pipes/strip-html.pipe';
 import { ModuleService } from '../../core/services/module.service';
 import { StudentService } from '../../core/services/student.service';
 import { Module } from '../../core/models/module.model';
@@ -10,7 +11,7 @@ import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-student-modules',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatIconModule, StripHtmlPipe],
   template: `
     <div class="student-page">
 
@@ -148,7 +149,7 @@ import { environment } from '../../../environments/environment';
                 <!-- Body -->
                 <div class="s-card-body">
                   <h3 class="s-card-title">{{ mod.title }}</h3>
-                  <p class="s-card-desc">{{ mod.description || 'Bu modul haqida tavsif yo\'q.' }}</p>
+                  <p class="s-card-desc">{{ (mod.description | stripHtml) || "Bu modul haqida tavsif yo'q." }}</p>
 
                   <div class="s-card-footer">
                     <div class="s-card-meta">

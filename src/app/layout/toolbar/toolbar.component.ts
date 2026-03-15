@@ -38,12 +38,12 @@ import { LanguageSwitcherComponent } from '../../shared/components/language-swit
             <span class="notification-badge"></span>
           </button>
 
-          <button mat-button [matMenuTriggerFor]="userMenu" class="user-btn">
+          <button [matMenuTriggerFor]="userMenu" class="user-btn">
             <div class="user-avatar">
               <mat-icon>person</mat-icon>
             </div>
-            <span class="user-name">{{ teacher?.full_name }}</span>
-            <mat-icon class="dropdown-icon">keyboard_arrow_down</mat-icon>
+            <span class="user-name">{{ teacher?.full_name || 'Teacher' }}</span>
+            <mat-icon class="dropdown-icon">expand_more</mat-icon>
           </button>
 
           <mat-menu #userMenu="matMenu" class="user-menu">
@@ -169,10 +169,12 @@ import { LanguageSwitcherComponent } from '../../shared/components/language-swit
       align-items: center;
       gap: 8px;
       padding: 6px 12px 6px 6px;
-      border-radius: var(--radius-full);
+      border-radius: var(--radius-full, 50px);
       background: var(--gray-50);
       border: 1px solid var(--gray-200);
       transition: all var(--transition);
+      cursor: pointer;
+      outline: none;
 
       &:hover {
         background: var(--white);
