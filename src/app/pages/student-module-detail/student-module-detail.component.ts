@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { StripHtmlPipe } from '../../shared/pipes/strip-html.pipe';
+import { StudentAiChatComponent } from '../../shared/components/student-ai-chat/student-ai-chat.component';
 import { ModuleService } from '../../core/services/module.service';
 import { LessonService } from '../../core/services/lesson.service';
 import { StudentService } from '../../core/services/student.service';
@@ -13,7 +14,7 @@ import { Student } from '../../core/models/student.model';
 
 @Component({
   selector: 'app-student-module-detail',
-  imports: [MatButtonModule, MatIconModule, TranslatePipe, StripHtmlPipe],
+  imports: [MatButtonModule, MatIconModule, TranslatePipe, StripHtmlPipe, StudentAiChatComponent],
   template: `
     <div class="student-page">
       <!-- Navbar -->
@@ -103,6 +104,10 @@ import { Student } from '../../core/models/student.model';
           </div>
         }
       </main>
+
+      <!-- Floating AI Chat -->
+      <app-student-ai-chat />
+
     </div>
   `,
   styles: [`

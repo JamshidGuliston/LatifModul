@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -192,30 +193,69 @@ import { QuillModule } from 'ngx-quill';
                         </div>
                       </div>
 
+                      <!-- Matn uchun Quill editor -->
                       <div class="input-group">
                         <label>{{ 'content.text' | translate }}</label>
-                        <div class="input-wrapper textarea-wrapper">
-                          <mat-icon>article</mat-icon>
-                          <textarea [(ngModel)]="contentForm.content" rows="3" placeholder="Kontent matni"></textarea>
+                        <quill-editor
+                          [(ngModel)]="contentForm.content"
+                          name="contentText"
+                          [modules]="contentQuillModules"
+                          placeholder="Kontent matnini kiriting..."
+                          class="content-quill-editor">
+                        </quill-editor>
+                      </div>
+
+                      <!-- Video URL -->
+                      <div class="input-group">
+                        <label>{{ 'content.videoUrl' | translate }}</label>
+                        <div class="input-wrapper">
+                          <mat-icon>videocam</mat-icon>
+                          <input [(ngModel)]="contentForm.video_url" placeholder="https://youtube.com/...">
                         </div>
                       </div>
 
-                      <div class="form-grid">
-                        <div class="input-group">
-                          <label>{{ 'content.videoUrl' | translate }}</label>
-                          <div class="input-wrapper">
-                            <mat-icon>videocam</mat-icon>
-                            <input [(ngModel)]="contentForm.video_url" placeholder="Video URL">
-                          </div>
-                        </div>
+                      <!-- Fayl yuklash -->
+                      <div class="input-group">
+                        <label>Fayl yuklash</label>
+                        <div class="file-upload-area"
+                          [class.has-file]="contentForm.file_url"
+                          [class.uploading]="uploadingFile()"
+                          (click)="fileInput.click()"
+                          (dragover)="$event.preventDefault()"
+                          (drop)="onFileDrop($event)">
+                          <input #fileInput type="file" hidden (change)="onFileSelect($event)">
 
-                        <div class="input-group">
-                          <label>{{ 'content.fileUrl' | translate }}</label>
-                          <div class="input-wrapper">
-                            <mat-icon>attach_file</mat-icon>
-                            <input [(ngModel)]="contentForm.file_url" placeholder="Fayl URL">
-                          </div>
+                          @if (uploadingFile()) {
+                            <div class="upload-state">
+                              <div class="upload-spinner"></div>
+                              <span>Yuklanmoqda...</span>
+                            </div>
+                          } @else if (contentForm.file_url) {
+                            <div class="upload-state success">
+                              <mat-icon>check_circle</mat-icon>
+                              <div class="file-info">
+                                <span class="file-name">{{ uploadedFileName() }}</span>
+                                <span class="file-url-preview">{{ contentForm.file_url }}</span>
+                              </div>
+                              <button class="remove-file-btn" (click)="removeFile($event)">
+                                <mat-icon>close</mat-icon>
+                              </button>
+                            </div>
+                          } @else {
+                            <div class="upload-state idle">
+                              <div class="upload-icon-wrap">
+                                <mat-icon>cloud_upload</mat-icon>
+                              </div>
+                              <div>
+                                <span class="upload-title">Faylni suring yoki bosing</span>
+                                <span class="upload-sub">PDF, DOC, DOCX, PPT, XLSX, JPG, PNG — max 50MB</span>
+                              </div>
+                            </div>
+                          }
                         </div>
+                        @if (uploadError()) {
+                          <span class="error-text">{{ uploadError() }}</span>
+                        }
                       </div>
 
                       <div class="content-form-actions">
@@ -223,7 +263,7 @@ import { QuillModule } from 'ngx-quill';
                           <mat-icon>close</mat-icon>
                           {{ 'common.cancel' | translate }}
                         </button>
-                        <button class="btn btn-primary" (click)="saveContent()">
+                        <button class="btn btn-primary" (click)="saveContent()" [disabled]="uploadingFile()">
                           <mat-icon>save</mat-icon>
                           {{ 'common.save' | translate }}
                         </button>
@@ -813,6 +853,204 @@ import { QuillModule } from 'ngx-quill';
       }
     }
 
+    /* Content Quill editor */
+    .content-quill-editor {
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1.5px solid var(--gray-200);
+      transition: border-color 0.2s;
+
+      &:focus-within {
+        border-color: var(--primary-400);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
+      ::ng-deep .ql-toolbar {
+        border: none;
+        border-bottom: 1px solid var(--gray-200);
+        background: var(--gray-50);
+        padding: 8px 12px;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        flex-wrap: wrap;
+        gap: 2px;
+      }
+
+      ::ng-deep .ql-container {
+        border: none;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.95rem;
+        min-height: 220px;
+      }
+
+      ::ng-deep .ql-editor {
+        min-height: 220px;
+        padding: 14px 16px;
+        color: var(--gray-800);
+        line-height: 1.7;
+
+        &.ql-blank::before {
+          color: var(--gray-400);
+          font-style: normal;
+        }
+
+        h1, h2, h3 { color: var(--gray-900); margin: 12px 0 6px; }
+        p { margin: 0 0 8px; }
+        ul, ol { padding-left: 20px; margin: 8px 0; }
+        blockquote {
+          border-left: 3px solid var(--primary-400);
+          padding: 8px 12px;
+          background: var(--primary-50);
+          border-radius: 0 var(--radius) var(--radius) 0;
+          color: var(--gray-700);
+          margin: 10px 0;
+        }
+        pre {
+          background: var(--gray-900);
+          color: #e2e8f0;
+          padding: 14px 16px;
+          border-radius: var(--radius);
+          font-size: 0.875rem;
+          overflow-x: auto;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          td, th {
+            border: 1px solid var(--gray-200);
+            padding: 8px 12px;
+          }
+          th { background: var(--gray-50); font-weight: 600; }
+        }
+      }
+    }
+
+    /* File upload area */
+    .file-upload-area {
+      border: 2px dashed var(--gray-300);
+      border-radius: var(--radius-xl);
+      padding: 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--gray-50);
+
+      &:hover, &.uploading {
+        border-color: var(--primary-400);
+        background: var(--primary-50);
+      }
+
+      &.has-file {
+        border-style: solid;
+        border-color: var(--success, #10b981);
+        background: #f0fdf4;
+        cursor: default;
+      }
+    }
+
+    .upload-state {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+
+      mat-icon {
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+        flex-shrink: 0;
+      }
+
+      &.success mat-icon { color: #10b981; }
+      &.idle mat-icon { color: var(--primary-500); }
+    }
+
+    .upload-icon-wrap {
+      width: 52px;
+      height: 52px;
+      border-radius: var(--radius-lg);
+      background: var(--primary-100);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+
+      mat-icon {
+        font-size: 28px;
+        width: 28px;
+        height: 28px;
+        color: var(--primary-600);
+      }
+    }
+
+    .upload-title {
+      display: block;
+      font-weight: 600;
+      color: var(--gray-800);
+      font-size: 0.95rem;
+    }
+
+    .upload-sub {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--gray-500);
+      margin-top: 4px;
+    }
+
+    .upload-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--primary-100);
+      border-top-color: var(--primary-500);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    .file-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .file-name {
+      display: block;
+      font-weight: 600;
+      color: var(--gray-900);
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-url-preview {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--gray-500);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+
+    .remove-file-btn {
+      width: 30px;
+      height: 30px;
+      border: none;
+      background: #fee2e2;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #dc2626;
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+
+      &:hover { background: #fecaca; }
+    }
+
     @keyframes spin {
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
@@ -834,6 +1072,7 @@ export class LessonFormComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private lessonService = inject(LessonService);
   private contentService = inject(ContentService);
+  private http = inject(HttpClient);
   private dialog = inject(MatDialog);
 
   quillModules = {
@@ -842,6 +1081,20 @@ export class LessonFormComponent implements OnInit {
       ['bold', 'italic', 'underline', 'strike'],
       [{ color: [] }, { background: [] }],
       [{ list: 'ordered' }, { list: 'bullet' }],
+      [{ align: [] }],
+      ['blockquote', 'code-block'],
+      ['link', 'image'],
+      ['clean']
+    ]
+  };
+
+  contentQuillModules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ color: [] }, { background: [] }],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      [{ indent: '-1' }, { indent: '+1' }],
       [{ align: [] }],
       ['blockquote', 'code-block'],
       ['link', 'image'],
@@ -868,6 +1121,10 @@ export class LessonFormComponent implements OnInit {
   contentTypes = signal<ContentType[]>([]);
   contents = signal<LessonContent[]>([]);
   contentForm: any = { title: '', content_type: '', content: '', video_url: '', file_url: '' };
+
+  uploadingFile = signal(false);
+  uploadError = signal('');
+  uploadedFileName = signal('');
 
   ngOnInit(): void {
     this.moduleId = this.route.snapshot.queryParams['module_id'] || '';
@@ -923,8 +1180,54 @@ export class LessonFormComponent implements OnInit {
         this.contents.update(list => [...list, c]);
         this.showContentForm.set(false);
         this.contentForm = { title: '', content_type: '', content: '', video_url: '', file_url: '' };
+        this.uploadedFileName.set('');
+        this.uploadError.set('');
       }
     });
+  }
+
+  onFileSelect(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (file) this.uploadFile(file);
+  }
+
+  onFileDrop(event: DragEvent): void {
+    event.preventDefault();
+    const file = event.dataTransfer?.files?.[0];
+    if (file) this.uploadFile(file);
+  }
+
+  private uploadFile(file: File): void {
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      this.uploadError.set('Fayl hajmi 50MB dan oshmasligi kerak');
+      return;
+    }
+    this.uploadError.set('');
+    this.uploadingFile.set(true);
+    this.uploadedFileName.set(file.name);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    this.http.post<{ url: string }>('/upload/', formData).subscribe({
+      next: (res) => {
+        this.contentForm.file_url = res.url;
+        this.uploadingFile.set(false);
+      },
+      error: () => {
+        this.uploadError.set('Fayl yuklanmadi. Qayta urinib ko\'ring.');
+        this.uploadingFile.set(false);
+        this.uploadedFileName.set('');
+      }
+    });
+  }
+
+  removeFile(event: MouseEvent): void {
+    event.stopPropagation();
+    this.contentForm.file_url = '';
+    this.uploadedFileName.set('');
+    this.uploadError.set('');
   }
 
   deleteContent(id: string): void {

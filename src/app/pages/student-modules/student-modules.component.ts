@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { StripHtmlPipe } from '../../shared/pipes/strip-html.pipe';
+import { StudentAiChatComponent } from '../../shared/components/student-ai-chat/student-ai-chat.component';
 import { ModuleService } from '../../core/services/module.service';
 import { StudentService } from '../../core/services/student.service';
 import { Module } from '../../core/models/module.model';
@@ -11,7 +12,7 @@ import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-student-modules',
-  imports: [MatButtonModule, MatIconModule, StripHtmlPipe],
+  imports: [MatButtonModule, MatIconModule, StripHtmlPipe, StudentAiChatComponent],
   template: `
     <div class="student-page">
 
@@ -175,6 +176,9 @@ import { environment } from '../../../environments/environment';
       <footer class="s-footer">
         <p>© 2025 Latif Modul — Bilim platformasi</p>
       </footer>
+
+      <!-- Floating AI Chat -->
+      <app-student-ai-chat />
 
     </div>
   `,

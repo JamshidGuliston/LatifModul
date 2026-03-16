@@ -12,7 +12,7 @@ import { LanguageService } from '../../../core/services/language.service';
 
 @Component({
   selector: 'app-assignment-list',
-  imports: [MatIconModule, TranslatePipe, LoadingSpinnerComponent],
+  imports: [MatIconModule, TranslatePipe],
   template: `
     <div class="page-container">
 
