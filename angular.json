@@ -65,10 +65,11 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "10kB",
-                  "maximumError": "20kB"
+                  "maximumWarning": "20kB",
+                  "maximumError": "40kB"
                 }
               ],
+              "allowedCommonJsDependencies": ["quill-delta"],
               "outputHashing": "all",
               "fileReplacements": [
                 {

@@ -1180,7 +1180,7 @@ export class LessonFormComponent implements OnInit {
         const formData = new FormData();
         formData.append('file', file);
         const res = await lastValueFrom(this.http.post<{ url: string }>(environment.uploadUrl, formData, {
-          headers: { Authorization: `Bearer ${environment.uploadToken}` }
+          headers: { 'X-Upload-Token': environment.uploadToken }
         }));
         if (res?.url) img.setAttribute('src', res.url);
       } catch { /* base64 saqlanib qoladi */ }

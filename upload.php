@@ -5,26 +5,25 @@
  * Fayllarni /uploads/ papkasiga saqlaydi, URL ni qaytaradi
  */
 
-// Token tekshiruvi
-$headers = getallheaders();
-$auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-$token = trim(str_replace('Bearer ', '', $auth));
-
-$secret = '6e9e4068-325d-4008-9a10-ce0450b4d9ee';
-if ($token !== $secret) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Ruxsat yo\'q']);
-    exit;
-}
-
-// CORS
+// CORS (token tekshirishdan oldin bo'lishi kerak)
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Headers: Authorization, Content-Type');
+header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Upload-Token');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
+    exit;
+}
+
+// Token tekshiruvi
+$headers = getallheaders();
+$token = $headers['X-Upload-Token'] ?? $headers['x-upload-token'] ?? '';
+
+$secret = '6e9e4068-325d-4008-9a10-ce0450b4d9ee';
+if ($token !== $secret) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Ruxsat yo\'q']);
     exit;
 }
 
