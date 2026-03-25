@@ -11,6 +11,7 @@ import { Lesson } from '../../core/models/lesson.model';
 import { LessonContent } from '../../core/models/content.model';
 import { Student } from '../../core/models/student.model';
 import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-student-lesson-detail',
@@ -103,10 +104,16 @@ import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-brows
 
                     <!-- File content -->
                     @if (c.file_url) {
-                      <a [href]="c.file_url" target="_blank" class="file-link">
-                        <mat-icon>download</mat-icon>
-                        {{ 'studentLesson.downloadFile' | translate }}
-                      </a>
+                      @if (isPdf(c.file_url)) {
+                        <div class="pdf-viewer">
+                          <iframe [src]="getPdfUrl(c.file_url)" class="pdf-iframe"></iframe>
+                        </div>
+                      } @else {
+                        <a [href]="resolveFileUrl(c.file_url)" target="_blank" class="file-link">
+                          <mat-icon>download</mat-icon>
+                          {{ 'studentLesson.downloadFile' | translate }}
+                        </a>
+                      }
                     }
                   </div>
                 </div>
@@ -322,6 +329,20 @@ import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-brows
       border-radius: 12px;
     }
 
+    .pdf-viewer {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+    }
+
+    .pdf-iframe {
+      width: 100%;
+      height: 700px;
+      border: none;
+      display: block;
+    }
+
     .file-link {
       display: inline-flex;
       align-items: center;
@@ -391,6 +412,21 @@ export class StudentLessonDetailComponent implements OnInit {
 
   getSafeHtml(html: string): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(html);
+  }
+
+  resolveFileUrl(url: string): string {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    const base = environment.apiUrl.replace('/api', '');
+    return base + url;
+  }
+
+  isPdf(url: string): boolean {
+    return url.toLowerCase().includes('.pdf');
+  }
+
+  getPdfUrl(url: string): SafeResourceUrl {
+    return this.sanitizer.bypassSecurityTrustResourceUrl(this.resolveFileUrl(url));
   }
 
   getYoutubeEmbedUrl(url: string): SafeResourceUrl | null {

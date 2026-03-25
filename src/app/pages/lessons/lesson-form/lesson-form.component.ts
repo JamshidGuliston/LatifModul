@@ -260,7 +260,7 @@ import { QuillModule } from 'ngx-quill';
                       </div>
 
                       <div class="content-form-actions">
-                        <button class="btn btn-secondary" (click)="showContentForm.set(false)">
+                        <button class="btn btn-secondary" (click)="showContentForm.set(false); editingContentId.set(null); contentForm = { title: '', content_type: '', content: '', video_url: '', file_url: '' }; uploadedFileName.set(''); uploadError.set('')">
                           <mat-icon>close</mat-icon>
                           {{ 'common.cancel' | translate }}
                         </button>
@@ -290,6 +290,9 @@ import { QuillModule } from 'ngx-quill';
                             <span class="content-title">{{ c.title }}</span>
                             <span class="content-type">{{ c.type_name }}</span>
                           </div>
+                          <button class="action-btn edit" (click)="editContent(c)">
+                            <mat-icon>edit</mat-icon>
+                          </button>
                           <button class="action-btn delete" (click)="deleteContent(c.id)">
                             <mat-icon>delete</mat-icon>
                           </button>
@@ -843,6 +846,16 @@ import { QuillModule } from 'ngx-quill';
         height: 18px;
       }
 
+      &.edit {
+        background: var(--primary-50);
+        color: var(--primary-600);
+
+        &:hover {
+          background: var(--primary-100);
+          transform: scale(1.1);
+        }
+      }
+
       &.delete {
         background: var(--error-light);
         color: var(--error);
@@ -1126,6 +1139,7 @@ export class LessonFormComponent implements OnInit {
   uploadingFile = signal(false);
   uploadError = signal('');
   uploadedFileName = signal('');
+  editingContentId = signal<string | null>(null);
   private contentQuillInstance: any = null;
 
   onContentEditorCreated(quill: any) {
@@ -1218,11 +1232,35 @@ export class LessonFormComponent implements OnInit {
     }
   }
 
+  editContent(c: LessonContent): void {
+    this.editingContentId.set(c.id);
+    this.contentForm = {
+      title: c.title,
+      content_type: c.content_type,
+      content: c.content || '',
+      video_url: c.video_url || '',
+      file_url: c.file_url || ''
+    };
+    this.uploadedFileName.set(c.file_url ? c.file_url.split('/').pop() || '' : '');
+    this.uploadError.set('');
+    this.showContentForm.set(true);
+  }
+
   saveContent(): void {
-    this.contentService.createLessonContent({ ...this.contentForm, lesson: this.lessonId }).subscribe({
+    const editId = this.editingContentId();
+    const action = editId
+      ? this.contentService.updateLessonContent(editId, { ...this.contentForm })
+      : this.contentService.createLessonContent({ ...this.contentForm, lesson: this.lessonId });
+
+    action.subscribe({
       next: (c) => {
-        this.contents.update(list => [...list, c]);
+        if (editId) {
+          this.contents.update(list => list.map(item => item.id === editId ? c : item));
+        } else {
+          this.contents.update(list => [...list, c]);
+        }
         this.showContentForm.set(false);
+        this.editingContentId.set(null);
         this.contentForm = { title: '', content_type: '', content: '', video_url: '', file_url: '' };
         this.uploadedFileName.set('');
         this.uploadError.set('');
