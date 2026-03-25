@@ -3,6 +3,8 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
+import { StripHtmlPipe } from '../../shared/pipes/strip-html.pipe';
+import { StudentAiChatComponent } from '../../shared/components/student-ai-chat/student-ai-chat.component';
 import { ModuleService } from '../../core/services/module.service';
 import { LessonService } from '../../core/services/lesson.service';
 import { StudentService } from '../../core/services/student.service';
@@ -12,7 +14,7 @@ import { Student } from '../../core/models/student.model';
 
 @Component({
   selector: 'app-student-module-detail',
-  imports: [MatButtonModule, MatIconModule, TranslatePipe],
+  imports: [MatButtonModule, MatIconModule, TranslatePipe, StripHtmlPipe, StudentAiChatComponent],
   template: `
     <div class="student-page">
       <!-- Navbar -->
@@ -91,7 +93,7 @@ import { Student } from '../../core/models/student.model';
                     <div class="lesson-info">
                       <h3>{{ lesson.title }}</h3>
                       @if (lesson.description) {
-                        <p>{{ lesson.description }}</p>
+                        <p>{{ lesson.description | stripHtml }}</p>
                       }
                     </div>
                     <mat-icon class="lesson-arrow">chevron_right</mat-icon>
@@ -102,6 +104,10 @@ import { Student } from '../../core/models/student.model';
           </div>
         }
       </main>
+
+      <!-- Floating AI Chat -->
+      <app-student-ai-chat />
+
     </div>
   `,
   styles: [`
@@ -294,8 +300,18 @@ import { Student } from '../../core/models/student.model';
 
     .lesson-info {
       flex: 1;
+      overflow: hidden;
       h3 { font-size: 1rem; font-weight: 600; color: var(--gray-900); margin: 0 0 2px; }
-      p { font-size: 0.85rem; color: var(--gray-500); margin: 0; }
+      p { 
+        font-size: 0.85rem; 
+        color: var(--gray-500); 
+        margin: 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
     }
 
     .lesson-arrow {

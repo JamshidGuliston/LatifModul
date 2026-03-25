@@ -17,7 +17,7 @@ import { TeacherService } from '../../core/services/teacher.service';
           <div class="tc-status"></div>
         </div>
         <div class="tc-info">
-          <span class="tc-name">{{ teacher?.full_name || 'O\'qituvchi' }}</span>
+          <span class="tc-name">{{ teacher?.full_name || "O'qituvchi" }}</span>
           <span class="tc-role">
             <mat-icon>verified</mat-icon>
             O'qituvchi

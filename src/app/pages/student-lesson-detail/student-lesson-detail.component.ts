@@ -3,6 +3,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
+import { StudentAiChatComponent } from '../../shared/components/student-ai-chat/student-ai-chat.component';
 import { LessonService } from '../../core/services/lesson.service';
 import { ContentService } from '../../core/services/content.service';
 import { StudentService } from '../../core/services/student.service';
@@ -13,7 +14,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-student-lesson-detail',
-  imports: [MatButtonModule, MatIconModule, TranslatePipe],
+  imports: [MatButtonModule, MatIconModule, TranslatePipe, StudentAiChatComponent],
   template: `
     <div class="student-page">
       <!-- Navbar -->
@@ -114,6 +115,9 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
           }
         }
       </main>
+
+      <!-- Floating AI Chat -->
+      <app-student-ai-chat />
     </div>
   `,
   styles: [`

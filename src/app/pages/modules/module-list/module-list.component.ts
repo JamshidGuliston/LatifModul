@@ -9,6 +9,7 @@ import { ModuleService } from '../../../core/services/module.service';
 import { TeacherService } from '../../../core/services/teacher.service';
 import { Module } from '../../../core/models/module.model';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { StripHtmlPipe } from '../../../shared/pipes/strip-html.pipe';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { LanguageService } from '../../../core/services/language.service';
@@ -17,7 +18,7 @@ import { LanguageService } from '../../../core/services/language.service';
   selector: 'app-module-list',
   imports: [
     MatTableModule, MatButtonModule, MatIconModule, MatChipsModule,
-    TranslatePipe, LoadingSpinnerComponent
+    TranslatePipe, StripHtmlPipe, LoadingSpinnerComponent
   ],
   template: `
     <div class="page-container">
@@ -68,7 +69,7 @@ import { LanguageService } from '../../../core/services/language.service';
                     </div>
                     <div class="module-info">
                       <span class="module-title">{{ mod.title }}</span>
-                      <span class="module-desc">{{ mod.description || 'Tavsif yo\\'q' }}</span>
+                      <span class="module-desc">{{ (mod.description | stripHtml) || "Tavsif yo'q" }}</span>
                     </div>
                   </div>
                 </td>
@@ -112,7 +113,7 @@ import { LanguageService } from '../../../core/services/language.service';
                     <button class="action-btn lessons" (click)="router.navigate(['/modules', mod.id, 'lessons'])" matTooltip="Darslar">
                       <mat-icon>list</mat-icon>
                     </button>
-                    <button class="action-btn edit" (click)="router.navigate(['/modules', mod.id, 'edit'])">
+                    <button class="action-btn edit" (click)="router.navigate(['/modules', mod.id])">
                       <mat-icon>edit</mat-icon>
                     </button>
                     <button class="action-btn delete" (click)="onDelete(mod)">
