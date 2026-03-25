@@ -8,7 +8,7 @@ import { environment } from '../../../environments/environment';
 export class GeminiService {
     private genAI: GoogleGenerativeAI;
     private chatSession: ChatSession | null = null;
-    private readonly MODEL_NAME = 'gemini-1.5-flash'; // Good balance of speed and capability
+    private readonly MODEL_NAME = 'gemini-2.5-flash'; // Good balance of speed and capability
 
     constructor() {
         // If you don't have it in your environment.ts, please add it:

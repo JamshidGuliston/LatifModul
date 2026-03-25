@@ -24,7 +24,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
             <div class="logo-icon">
               <mat-icon>school</mat-icon>
             </div>
-            <span class="brand-name">Latif Modul</span>
+            <span class="brand-name">Info Teacher</span>
           </div>
           <div class="nav-right">
             <div class="student-info">

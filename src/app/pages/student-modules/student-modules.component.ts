@@ -23,7 +23,7 @@ import { environment } from '../../../environments/environment';
             <div class="s-logo">
               <mat-icon>school</mat-icon>
             </div>
-            <span class="s-brand-name">Latif Modul</span>
+            <span class="s-brand-name">Info Teacher</span>
           </div>
           <div class="s-nav-actions">
             <div class="s-student-chip">
@@ -174,7 +174,7 @@ import { environment } from '../../../environments/environment';
 
       <!-- Footer -->
       <footer class="s-footer">
-        <p>© 2025 Latif Modul — Bilim platformasi</p>
+        <p>© 2025 Info Teacher — Bilim platformasi</p>
       </footer>
 
       <!-- Floating AI Chat -->

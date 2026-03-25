@@ -13,9 +13,9 @@ import { StudentAuthComponent } from '../student-auth/student-auth.component';
 import { environment } from '../../../environments/environment';
 
 @Component({
-    selector: 'app-landing',
-    imports: [MatButtonModule, MatIconModule, MatCardModule, MatDialogModule, TranslatePipe],
-    template: `
+  selector: 'app-landing',
+  imports: [MatButtonModule, MatIconModule, MatCardModule, MatDialogModule, TranslatePipe],
+  template: `
     <div class="landing-container">
       <!-- Navbar -->
       <nav class="navbar glass">
@@ -24,7 +24,7 @@ import { environment } from '../../../environments/environment';
             <div class="logo-icon">
               <mat-icon>school</mat-icon>
             </div>
-            <span class="brand-name">Latif Modul</span>
+            <span class="brand-name">Info Teacher</span>
           </div>
           <div class="nav-links">
             <a href="#home" class="nav-link">{{ 'landing.home' | translate }}</a>
@@ -118,6 +118,44 @@ import { environment } from '../../../environments/environment';
         </div>
       </header>
 
+      <!-- Features Section -->
+      <section id="features" class="features-section">
+        <div class="section-header">
+          <h2>{{ 'landing.features' | translate }}</h2>
+          <p>{{ 'landing.featuresDesc' | translate }}</p>
+        </div>
+        <div class="features-grid">
+          <div class="feature-card glass">
+            <div class="feature-icon ai-icon">
+              <mat-icon>smart_toy</mat-icon>
+            </div>
+            <h3>{{ 'landing.feat1Title' | translate }}</h3>
+            <p>{{ 'landing.feat1Desc' | translate }}</p>
+          </div>
+          <div class="feature-card glass">
+            <div class="feature-icon module-icon">
+              <mat-icon>view_module</mat-icon>
+            </div>
+            <h3>{{ 'landing.feat2Title' | translate }}</h3>
+            <p>{{ 'landing.feat2Desc' | translate }}</p>
+          </div>
+          <div class="feature-card glass">
+            <div class="feature-icon test-icon">
+              <mat-icon>quiz</mat-icon>
+            </div>
+            <h3>{{ 'landing.feat3Title' | translate }}</h3>
+            <p>{{ 'landing.feat3Desc' | translate }}</p>
+          </div>
+          <div class="feature-card glass">
+            <div class="feature-icon chart-icon">
+              <mat-icon>trending_up</mat-icon>
+            </div>
+            <h3>{{ 'landing.feat4Title' | translate }}</h3>
+            <p>{{ 'landing.feat4Desc' | translate }}</p>
+          </div>
+        </div>
+      </section>
+
       <!-- Modules Section -->
       <section id="modules" class="modules-section">
         <div class="section-header">
@@ -179,7 +217,7 @@ import { environment } from '../../../environments/environment';
       <footer class="footer">
         <div class="footer-content">
           <div class="footer-brand">
-            <h3>Latif Modul</h3>
+            <h3>Info Teacher</h3>
             <p>{{ 'landing.footerQuote' | translate }}</p>
           </div>
           <div class="footer-links">
@@ -195,16 +233,16 @@ import { environment } from '../../../environments/environment';
           </div>
         </div>
         <div class="footer-bottom">
-          <p>© 2026 Latif Modul. {{ 'landing.rights' | translate }}</p>
+          <p>© 2026 Info Teacher. {{ 'landing.rights' | translate }}</p>
         </div>
       </footer>
     </div>
   `,
-    styles: [`
+  styles: [`
     /* General Styles */
     .landing-container {
-      font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+      font-family: 'Outfit', 'Inter', sans-serif;
+      background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
       color: var(--gray-800);
       overflow-x: hidden;
     }
@@ -303,24 +341,25 @@ import { environment } from '../../../environments/environment';
     }
 
     .hero-title {
-      font-size: 3.5rem;
+      font-size: 4rem;
       font-weight: 800;
-      line-height: 1.1;
+      line-height: 1.15;
       margin-bottom: 24px;
-      background: linear-gradient(to right, var(--gray-900), var(--gray-700));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      letter-spacing: -1px;
+      color: var(--gray-900);
     }
 
     .highlight {
-      color: var(--primary-600);
-      -webkit-text-fill-color: var(--primary-600);
+      background: linear-gradient(135deg, #2563eb, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
     }
 
     .hero-subtitle {
-      font-size: 1.125rem;
+      font-size: 1.25rem;
       color: var(--gray-600);
-      margin-bottom: 32px;
+      margin-bottom: 40px;
       line-height: 1.6;
     }
 
@@ -330,10 +369,28 @@ import { environment } from '../../../environments/environment';
       margin-bottom: 48px;
     }
 
-    .cta-btn {
-      padding: 24px 32px !important;
+    ::ng-deep .cta-btn {
+      padding: 28px 40px !important;
+      font-size: 1.15rem !important;
+      border-radius: 100px !important;
+      font-weight: 600 !important;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3) !important;
+      color: white !important;
+      transition: transform 0.2s, box-shadow 0.2s !important;
+    }
+    ::ng-deep .cta-btn:hover {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 15px 35px rgba(37, 99, 235, 0.4) !important;
+    }
+
+    ::ng-deep .secondary-btn {
+      padding: 28px 32px !important;
       font-size: 1.1rem !important;
       border-radius: 100px !important;
+      border: 2px solid var(--primary-600) !important;
+      color: var(--primary-600) !important;
+      font-weight: 600 !important;
     }
 
     .stats-row {
@@ -512,6 +569,78 @@ import { environment } from '../../../environments/environment';
       0%, 100% { opacity: 1; }
       50% { opacity: 0; }
     }
+
+    /* Features Section */
+    .features-section {
+      padding: 100px 24px 60px;
+      max-width: 1280px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 32px;
+    }
+
+    .feature-card {
+      padding: 32px 28px;
+      border-radius: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      background: rgba(255, 255, 255, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03);
+
+      &:hover {
+        transform: translateY(-12px);
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+        border-color: rgba(255, 255, 255, 1);
+      }
+
+      h3 {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin: 24px 0 12px;
+        color: var(--gray-900);
+      }
+
+      p {
+        color: var(--gray-600);
+        line-height: 1.6;
+        margin: 0;
+        font-size: 0.95rem;
+      }
+    }
+
+    .feature-icon {
+      width: 68px;
+      height: 68px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s;
+      
+      mat-icon {
+        font-size: 34px;
+        width: 34px;
+        height: 34px;
+      }
+    }
+
+    .feature-card:hover .feature-icon {
+      transform: scale(1.1) rotate(-5deg);
+    }
+
+    .ai-icon { background: linear-gradient(135deg, #e0e7ff, #c7d2fe); color: #4f46e5; }
+    .module-icon { background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #16a34a; }
+    .test-icon { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #d97706; }
+    .chart-icon { background: linear-gradient(135deg, #ffe4e6, #fecdd3); color: #e11d48; }
 
     /* Modules Section */
     .modules-section {
@@ -793,42 +922,42 @@ import { environment } from '../../../environments/environment';
   `]
 })
 export class LandingComponent implements OnInit {
-    router = inject(Router);
-    moduleService = inject(ModuleService);
-    studentService = inject(StudentService);
-    private dialog = inject(MatDialog);
+  router = inject(Router);
+  moduleService = inject(ModuleService);
+  studentService = inject(StudentService);
+  private dialog = inject(MatDialog);
 
-    modules = signal<Module[]>([]);
-    isStudentLoggedIn = signal(false);
+  modules = signal<Module[]>([]);
+  isStudentLoggedIn = signal(false);
 
-    ngOnInit() {
-        this.isStudentLoggedIn.set(this.studentService.isStudentLoggedIn());
+  ngOnInit() {
+    this.isStudentLoggedIn.set(this.studentService.isStudentLoggedIn());
 
-        this.moduleService.getAll(environment.teacherId).subscribe(mods => {
-            this.modules.set(mods.slice(0, 6));
-        });
+    this.moduleService.getAll(environment.teacherId).subscribe(mods => {
+      this.modules.set(mods.slice(0, 6));
+    });
+  }
+
+  scrollToModules() {
+    document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  onBoshlash() {
+    if (this.studentService.isStudentLoggedIn()) {
+      this.router.navigate(['/student/modules']);
+    } else {
+      this.openAuthDialog();
     }
+  }
 
-    scrollToModules() {
-        document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' });
-    }
+  openAuthDialog() {
+    this.dialog.open(StudentAuthComponent, {
+      width: '480px',
+      panelClass: 'student-auth-dialog'
+    });
+  }
 
-    onBoshlash() {
-        if (this.studentService.isStudentLoggedIn()) {
-            this.router.navigate(['/student/modules']);
-        } else {
-            this.openAuthDialog();
-        }
-    }
-
-    openAuthDialog() {
-        this.dialog.open(StudentAuthComponent, {
-            width: '480px',
-            panelClass: 'student-auth-dialog'
-        });
-    }
-
-    goToStudentModules() {
-        this.router.navigate(['/student/modules']);
-    }
+  goToStudentModules() {
+    this.router.navigate(['/student/modules']);
+  }
 }

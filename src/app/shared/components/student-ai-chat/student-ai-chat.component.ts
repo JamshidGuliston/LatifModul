@@ -4,22 +4,24 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { GeminiService } from '../../../core/services/gemini.service';
+import { ModuleService } from '../../../core/services/module.service';
+import { StudentService } from '../../../core/services/student.service';
 import { environment } from '../../../../environments/environment';
 
 interface ChatMessage {
-    id: string;
-    sender: 'user' | 'ai';
-    text: string;
-    timestamp: Date;
+  id: string;
+  sender: 'user' | 'ai';
+  text: string;
+  timestamp: Date;
 }
 
 @Component({
-    selector: 'app-student-ai-chat',
-    standalone: true,
-    imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule],
-    template: `
+  selector: 'app-student-ai-chat',
+  standalone: true,
+  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule],
+  template: `
     <!-- Floating Button -->
-    <button class="chat-fab" (click)="toggleChat()" [class.hidden]="isOpen()" matTooltip="Gemini AI yordamchi">
+    <button class="chat-fab" (click)="toggleChat()" [class.hidden]="isOpen()" matTooltip="AI yordamchi">
       <mat-icon>smart_toy</mat-icon>
     </button>
 
@@ -32,7 +34,7 @@ interface ChatMessage {
             <mat-icon>smart_toy</mat-icon>
           </div>
           <div class="header-text">
-            <h3>Gemini AI</h3>
+            <h3>AI Yordamchi</h3>
             <span class="status">Online yordamchi</span>
           </div>
         </div>
@@ -104,7 +106,7 @@ interface ChatMessage {
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .chat-fab {
       position: fixed;
       bottom: 24px;
@@ -406,93 +408,126 @@ interface ChatMessage {
   `]
 })
 export class StudentAiChatComponent implements AfterViewChecked {
-    @ViewChild('scrollFrame') scrollFrame!: ElementRef;
+  @ViewChild('scrollFrame') scrollFrame!: ElementRef;
 
-    private geminiService = inject(GeminiService);
+  private geminiService = inject(GeminiService);
+  private moduleService = inject(ModuleService);
+  private studentService = inject(StudentService);
 
-    isOpen = signal(false);
-    messages = signal<ChatMessage[]>([]);
-    newMessage = '';
-    isTyping = signal(false);
-    hasApiKey = !!environment.geminiApiKey;
+  isOpen = signal(false);
+  messages = signal<ChatMessage[]>([]);
+  newMessage = '';
+  isTyping = signal(false);
+  hasApiKey = !!environment.geminiApiKey;
 
-    toggleChat() {
-        this.isOpen.update(v => !v);
-        if (this.isOpen() && this.messages().length === 0 && this.hasApiKey) {
-            // Optional: initialize chat service ahead
-            this.geminiService.startChat().catch(err => console.error("Could not start chat", err));
-        }
+  toggleChat() {
+    this.isOpen.update(v => !v);
+    if (this.isOpen() && this.messages().length === 0 && this.hasApiKey) {
+      this.initChatWithContext();
+    }
+  }
+
+  private initChatWithContext() {
+    const student = this.studentService.getCurrentStudent();
+    let context = `Sen Info Teacher platformasining 'AI Yordamchi'sisan. Asosan o'quvchilarga dasturlash va boshqa fanlardan yordam berasan. O'zbek tilida gaplashishing va xushmuomala bo'lishing kerak.\n\n`;
+
+    if (student) {
+      context += `Suhbatdoshing (hozirgi o'quvchi): ${student.full_name}.\n`;
     }
 
-    async sendMessage() {
-        const text = this.newMessage.trim();
-        if (!text || !this.hasApiKey) return;
+    const teacherId = environment.teacherId;
 
-        // Add User Message
-        const userMsg: ChatMessage = {
-            id: Date.now().toString(),
-            sender: 'user',
-            text: text,
-            timestamp: new Date()
-        };
+    // Qisqa qilib avval Modullarni yuklab keyin Talabalar sonini biriktiramiz
+    this.moduleService.getAll(teacherId).subscribe({
+      next: (modules) => {
+        let modsInfo = modules.map(m => ` - Kurs nomi: ${m.title} (Ta'rifi: ${m.description || "Batafsil ma'lumot berilmagan"}, Jami: ${m.lessons_count || 0} ta darsni o'z ichiga oladi)`).join('\n');
+        context += `Platformadagi kurslar va modullar ro'yxati quyidagicha:\n${modsInfo}\n\nO'quvchi ushbu kurslar haqida so'rasa shular asosida yordam berasan.\n`;
 
-        this.messages.update(m => [...m, userMsg]);
-        this.newMessage = '';
-        this.isTyping.set(true);
+        this.studentService.getAll(teacherId).subscribe({
+          next: (students) => {
+            context += `Ayni vaqtda platformamizda jami ${students.length} ta o'quvchi tahsil olayotganini ham bilib qo'ygin.\n`;
+            this.geminiService.startChat(context).catch(console.error);
+          },
+          error: () => {
+            this.geminiService.startChat(context).catch(console.error);
+          }
+        });
+      },
+      error: () => {
+        this.geminiService.startChat(context).catch(console.error);
+      }
+    });
+  }
 
-        // Add wait time / loading state
-        try {
-            const response = await this.geminiService.sendMessage(text);
+  async sendMessage() {
+    const text = this.newMessage.trim();
+    if (!text || !this.hasApiKey) return;
 
-            const aiMsg: ChatMessage = {
-                id: (Date.now() + 1).toString(),
-                sender: 'ai',
-                text: response,
-                timestamp: new Date()
-            };
+    // Add User Message
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      sender: 'user',
+      text: text,
+      timestamp: new Date()
+    };
 
-            this.messages.update(m => [...m, aiMsg]);
-        } catch (error) {
-            const errorMsg: ChatMessage = {
-                id: (Date.now() + 1).toString(),
-                sender: 'ai',
-                text: "Kechirasiz, xatolik yuz berdi. Javob olish imkoni bo'lmadi.",
-                timestamp: new Date()
-            };
-            this.messages.update(m => [...m, errorMsg]);
-        } finally {
-            this.isTyping.set(false);
-        }
+    this.messages.update(m => [...m, userMsg]);
+    this.newMessage = '';
+    this.isTyping.set(true);
+
+    // Add wait time / loading state
+    try {
+      const response = await this.geminiService.sendMessage(text);
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: response,
+        timestamp: new Date()
+      };
+
+      this.messages.update(m => [...m, aiMsg]);
+    } catch (error: any) {
+      const errorMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: "Kechirasiz, xatolik yuz berdi: " + (error?.message || String(error)),
+        timestamp: new Date()
+      };
+      this.messages.update(m => [...m, errorMsg]);
+    } finally {
+      this.isTyping.set(false);
     }
+  }
 
-    formatMessage(text: string): string {
-        // Simple replacements for bold, italic, code blocks.
-        // Given the complexity of markdown, we'll do simple regex
-        let formatted = text
-            // escape html
-            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-            // bold
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            // code block
-            .replace(/```([a-z]*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-            // inline code
-            .replace(/`(.*?)`/g, '<code>$1</code>')
-            // line breaks
-            .replace(/\n/g, '<br>');
+  formatMessage(text: string): string {
+    // Simple replacements for bold, italic, code blocks.
+    // Given the complexity of markdown, we'll do simple regex
+    let formatted = text
+      // escape html
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      // bold
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // code block
+      .replace(/```([a-z]*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+      // inline code
+      .replace(/`(.*?)`/g, '<code>$1</code>')
+      // line breaks
+      .replace(/\n/g, '<br>');
 
-        return formatted;
-    }
+    return formatted;
+  }
 
-    ngAfterViewChecked() {
-        this.scrollToBottom();
-    }
+  ngAfterViewChecked() {
+    this.scrollToBottom();
+  }
 
-    private scrollToBottom(): void {
-        try {
-            const el = this.scrollFrame.nativeElement;
-            // Scroll only if newly added msgs push content down
-            // Standard easy trick is just to scroll max
-            el.scrollTop = el.scrollHeight;
-        } catch (err) { }
-    }
+  private scrollToBottom(): void {
+    try {
+      const el = this.scrollFrame.nativeElement;
+      // Scroll only if newly added msgs push content down
+      // Standard easy trick is just to scroll max
+      el.scrollTop = el.scrollHeight;
+    } catch (err) { }
+  }
 }
