@@ -106,8 +106,12 @@ import { environment } from '../../../environments/environment';
                     @if (c.file_url) {
                       @if (isPdf(c.file_url)) {
                         <div class="pdf-viewer">
-                          <iframe [src]="getPdfUrl(c.file_url)" class="pdf-iframe"></iframe>
+                          <iframe [src]="getPdfViewerUrl(c.file_url)" class="pdf-iframe"></iframe>
                         </div>
+                        <a [href]="resolveFileUrl(c.file_url)" target="_blank" class="file-link" style="margin-top:12px">
+                          <mat-icon>open_in_new</mat-icon>
+                          To'liq ekranda ochish
+                        </a>
                       } @else {
                         <a [href]="resolveFileUrl(c.file_url)" target="_blank" class="file-link">
                           <mat-icon>download</mat-icon>
@@ -425,8 +429,10 @@ export class StudentLessonDetailComponent implements OnInit {
     return url.toLowerCase().includes('.pdf');
   }
 
-  getPdfUrl(url: string): SafeResourceUrl {
-    return this.sanitizer.bypassSecurityTrustResourceUrl(this.resolveFileUrl(url));
+  getPdfViewerUrl(url: string): SafeResourceUrl {
+    const fullUrl = this.resolveFileUrl(url);
+    const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fullUrl)}&embedded=true`;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(viewerUrl);
   }
 
   getYoutubeEmbedUrl(url: string): SafeResourceUrl | null {
