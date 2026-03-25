@@ -201,7 +201,8 @@ import { QuillModule } from 'ngx-quill';
                           name="contentText"
                           [modules]="contentQuillModules"
                           placeholder="Kontent matnini kiriting..."
-                          class="content-quill-editor">
+                          class="content-quill-editor"
+                          (onEditorCreated)="onContentEditorCreated($event)">
                         </quill-editor>
                       </div>
 
@@ -1125,6 +1126,49 @@ export class LessonFormComponent implements OnInit {
   uploadingFile = signal(false);
   uploadError = signal('');
   uploadedFileName = signal('');
+  private contentQuillInstance: any = null;
+
+  onContentEditorCreated(quill: any) {
+    this.contentQuillInstance = quill;
+    quill.root.addEventListener('paste', (e: ClipboardEvent) => {
+      const html = e.clipboardData?.getData('text/html');
+      if (html && html.includes('data:image')) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.processPastedHtml(quill, html);
+      }
+    }, true);
+  }
+
+  private async processPastedHtml(quill: any, html: string) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const images = Array.from(doc.querySelectorAll('img[src^="data:"]'));
+
+    await Promise.all(images.map(async (img) => {
+      const src = img.getAttribute('src')!;
+      try {
+        const blob = this.dataURItoBlob(src);
+        const file = new File([blob], 'pasted-image.png', { type: blob.type });
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await this.http.post<{ url: string }>('/upload/', formData).toPromise();
+        if (res?.url) img.setAttribute('src', res.url);
+      } catch { /* base64 saqlanib qoladi */ }
+    }));
+
+    const range = quill.getSelection(true) || { index: quill.getLength() - 1 };
+    quill.clipboard.dangerouslyPasteHTML(range.index, doc.body.innerHTML);
+  }
+
+  private dataURItoBlob(dataURI: string): Blob {
+    const [header, data] = dataURI.split(',');
+    const mime = header.split(':')[1].split(';')[0];
+    const bytes = atob(data);
+    const ab = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) ab[i] = bytes.charCodeAt(i);
+    return new Blob([ab], { type: mime });
+  }
 
   ngOnInit(): void {
     this.moduleId = this.route.snapshot.queryParams['module_id'] || '';

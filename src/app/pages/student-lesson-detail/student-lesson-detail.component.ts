@@ -10,7 +10,7 @@ import { StudentService } from '../../core/services/student.service';
 import { Lesson } from '../../core/models/lesson.model';
 import { LessonContent } from '../../core/models/content.model';
 import { Student } from '../../core/models/student.model';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-student-lesson-detail',
@@ -82,7 +82,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
                   <div class="content-body">
                     <!-- Text content -->
                     @if (c.content) {
-                      <div class="text-content" [innerHTML]="c.content"></div>
+                      <div class="text-content" [innerHTML]="getSafeHtml(c.content)"></div>
                     }
 
                     <!-- Video content -->
@@ -387,6 +387,10 @@ export class StudentLessonDetailComponent implements OnInit {
     };
     const key = typeName?.toLowerCase() ?? '';
     return icons[key] || 'folder';
+  }
+
+  getSafeHtml(html: string): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
   getYoutubeEmbedUrl(url: string): SafeResourceUrl | null {
