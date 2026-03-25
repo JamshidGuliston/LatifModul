@@ -16,11 +16,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Token tekshiruvi
-$headers = getallheaders();
-$token = $headers['X-Upload-Token'] ?? $headers['x-upload-token'] ?? '';
-
+// Token tekshiruvi (POST field yoki header orqali)
 $secret = '6e9e4068-325d-4008-9a10-ce0450b4d9ee';
+$token = $_POST['_token'] ?? '';
+if (empty($token)) {
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    $token = $headers['X-Upload-Token'] ?? $headers['x-upload-token'] ?? '';
+}
 if ($token !== $secret) {
     http_response_code(401);
     echo json_encode(['error' => 'Ruxsat yo\'q']);

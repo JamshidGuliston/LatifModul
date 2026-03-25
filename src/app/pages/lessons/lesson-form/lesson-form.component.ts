@@ -1179,9 +1179,8 @@ export class LessonFormComponent implements OnInit {
         const file = new File([blob], 'pasted-image.png', { type: blob.type });
         const formData = new FormData();
         formData.append('file', file);
-        const res = await lastValueFrom(this.http.post<{ url: string }>(environment.uploadUrl, formData, {
-          headers: { 'X-Upload-Token': environment.uploadToken }
-        }));
+        formData.append('_token', environment.uploadToken);
+        const res = await lastValueFrom(this.http.post<{ url: string }>(environment.uploadUrl, formData));
         if (res?.url) img.setAttribute('src', res.url);
       } catch { /* base64 saqlanib qoladi */ }
     }));
@@ -1306,10 +1305,9 @@ export class LessonFormComponent implements OnInit {
 
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('_token', environment.uploadToken);
 
-    this.http.post<{ url: string }>(environment.uploadUrl, formData, {
-      headers: { Authorization: `Bearer ${environment.uploadToken}` }
-    }).subscribe({
+    this.http.post<{ url: string }>(environment.uploadUrl, formData).subscribe({
       next: (res) => {
         this.contentForm.file_url = res.url;
         this.uploadingFile.set(false);
