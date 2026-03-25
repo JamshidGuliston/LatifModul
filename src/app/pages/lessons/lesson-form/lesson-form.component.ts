@@ -1,4 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { environment } from '../../../../environments/environment';
+import { lastValueFrom } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -81,7 +83,8 @@ import { QuillModule } from 'ngx-quill';
                         name="description"
                         [modules]="quillModules"
                         placeholder="Dars haqida qisqacha ma'lumot"
-                        class="quill-editor">
+                        class="quill-editor"
+                        (onEditorCreated)="onDescriptionEditorCreated($event)">
                       </quill-editor>
                     </div>
 
@@ -1099,7 +1102,8 @@ export class LessonFormComponent implements OnInit {
       ['blockquote', 'code-block'],
       ['link', 'image'],
       ['clean']
-    ]
+    ],
+    clipboard: { matchVisual: false }
   };
 
   contentQuillModules = {
@@ -1113,7 +1117,8 @@ export class LessonFormComponent implements OnInit {
       ['blockquote', 'code-block'],
       ['link', 'image'],
       ['clean']
-    ]
+    ],
+    clipboard: { matchVisual: false }
   };
 
   isEdit = signal(false);
@@ -1140,13 +1145,21 @@ export class LessonFormComponent implements OnInit {
   uploadError = signal('');
   uploadedFileName = signal('');
   editingContentId = signal<string | null>(null);
-  private contentQuillInstance: any = null;
-
-  onContentEditorCreated(quill: any) {
-    this.contentQuillInstance = quill;
+  onDescriptionEditorCreated(quill: any) {
     quill.root.addEventListener('paste', (e: ClipboardEvent) => {
       const html = e.clipboardData?.getData('text/html');
-      if (html && html.includes('data:image')) {
+      if (html && (html.includes('data:image') || html.includes('<img'))) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.processPastedHtml(quill, html);
+      }
+    }, true);
+  }
+
+  onContentEditorCreated(quill: any) {
+    quill.root.addEventListener('paste', (e: ClipboardEvent) => {
+      const html = e.clipboardData?.getData('text/html');
+      if (html && (html.includes('data:image') || html.includes('<img'))) {
         e.preventDefault();
         e.stopPropagation();
         this.processPastedHtml(quill, html);
@@ -1166,7 +1179,9 @@ export class LessonFormComponent implements OnInit {
         const file = new File([blob], 'pasted-image.png', { type: blob.type });
         const formData = new FormData();
         formData.append('file', file);
-        const res = await this.http.post<{ url: string }>('/upload/', formData).toPromise();
+        const res = await lastValueFrom(this.http.post<{ url: string }>(environment.uploadUrl, formData, {
+          headers: { Authorization: `Bearer ${environment.uploadToken}` }
+        }));
         if (res?.url) img.setAttribute('src', res.url);
       } catch { /* base64 saqlanib qoladi */ }
     }));
@@ -1292,7 +1307,9 @@ export class LessonFormComponent implements OnInit {
     const formData = new FormData();
     formData.append('file', file);
 
-    this.http.post<{ url: string }>('/upload/', formData).subscribe({
+    this.http.post<{ url: string }>(environment.uploadUrl, formData, {
+      headers: { Authorization: `Bearer ${environment.uploadToken}` }
+    }).subscribe({
       next: (res) => {
         this.contentForm.file_url = res.url;
         this.uploadingFile.set(false);
