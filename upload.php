@@ -10,7 +10,7 @@ $headers = getallheaders();
 $auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
 $token = trim(str_replace('Bearer ', '', $auth));
 
-$secret = getenv('UPLOAD_TOKEN') ?: 'your-secret-token-here';
+$secret = '6e9e4068-325d-4008-9a10-ce0450b4d9ee';
 if ($token !== $secret) {
     http_response_code(401);
     echo json_encode(['error' => 'Ruxsat yo\'q']);
