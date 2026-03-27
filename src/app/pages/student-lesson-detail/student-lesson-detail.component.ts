@@ -60,7 +60,7 @@ import { environment } from '../../../environments/environment';
             <div class="lesson-header">
               <h1>{{ lesson()!.title }}</h1>
               @if (lesson()!.description) {
-                <p class="lesson-desc">{{ lesson()!.description }}</p>
+                <div class="lesson-desc ql-editor" [innerHTML]="getSafeHtml(lesson()!.description || '')"></div>
               }
             </div>
           }
@@ -104,20 +104,16 @@ import { environment } from '../../../environments/environment';
 
                     <!-- File content -->
                     @if (c.file_url) {
-                      @if (isPdf(c.file_url)) {
-                        <div class="pdf-viewer">
-                          <iframe [src]="getPdfViewerUrl(c.file_url)" class="pdf-iframe"></iframe>
-                        </div>
-                        <a [href]="resolveFileUrl(c.file_url)" target="_blank" class="file-link" style="margin-top:12px">
-                          <mat-icon>open_in_new</mat-icon>
-                          To'liq ekranda ochish
+                      <div class="file-actions">
+                        <a [href]="resolveFileUrl(c.file_url)" target="_blank" class="file-btn file-btn-view">
+                          <mat-icon>visibility</mat-icon>
+                          Ko'rish
                         </a>
-                      } @else {
-                        <a [href]="resolveFileUrl(c.file_url)" target="_blank" class="file-link">
+                        <a [href]="resolveFileUrl(c.file_url)" [download]="getFileName(c.file_url)" class="file-btn file-btn-download">
                           <mat-icon>download</mat-icon>
-                          {{ 'studentLesson.downloadFile' | translate }}
+                          Yuklab olish
                         </a>
-                      }
+                      </div>
                     }
                   </div>
                 </div>
@@ -242,10 +238,19 @@ import { environment } from '../../../environments/environment';
     }
 
     .lesson-desc {
-      color: var(--gray-500);
+      color: var(--gray-700);
       font-size: 0.95rem;
-      line-height: 1.6;
+      line-height: 1.7;
       margin: 0;
+      padding: 0 !important;
+      border: none !important;
+
+      /* Quill HTML elementlari */
+      img { max-width: 100%; height: auto; border-radius: 8px; }
+      p { margin: 0 0 8px; }
+      h1, h2, h3 { margin: 12px 0 6px; }
+      ul, ol { padding-left: 20px; margin: 6px 0; }
+      strong { font-weight: 700; }
     }
 
     .contents-list {
@@ -333,42 +338,35 @@ import { environment } from '../../../environments/environment';
       border-radius: 12px;
     }
 
-    .pdf-viewer {
-      width: 100%;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid var(--gray-200);
+    .file-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
     }
 
-    .pdf-iframe {
-      width: 100%;
-      height: 700px;
-      border: none;
-      display: block;
-    }
-
-    .file-link {
+    .file-btn {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 12px 20px;
-      background: var(--primary-50);
-      color: var(--primary-700);
+      padding: 11px 20px;
       border-radius: 10px;
       text-decoration: none;
       font-weight: 600;
       font-size: 0.9rem;
-      transition: background 0.2s;
+      transition: all 0.2s;
+      mat-icon { font-size: 20px; width: 20px; height: 20px; }
+    }
 
-      &:hover {
-        background: var(--primary-100);
-      }
+    .file-btn-view {
+      background: var(--primary-50);
+      color: var(--primary-700);
+      &:hover { background: var(--primary-100); }
+    }
 
-      mat-icon {
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
-      }
+    .file-btn-download {
+      background: #f0fdf4;
+      color: #15803d;
+      &:hover { background: #dcfce7; }
     }
   `]
 })
@@ -427,6 +425,10 @@ export class StudentLessonDetailComponent implements OnInit {
 
   isPdf(url: string): boolean {
     return url.toLowerCase().includes('.pdf');
+  }
+
+  getFileName(url: string): string {
+    return url.split('/').pop() || 'file';
   }
 
   getPdfViewerUrl(url: string): SafeResourceUrl {

@@ -551,3 +551,72 @@ h6 { font-size: 0.875rem; }
 .shadow-md { box-shadow: var(--shadow-md); }
 .shadow-lg { box-shadow: var(--shadow-lg); }
 .shadow-xl { box-shadow: var(--shadow-xl); }
+
+/* ── Quill rasm pozitsiya toolbar (global — body ga append qilinadi) ── */
+.ql-img-floatbar {
+  display: none;
+  position: fixed;
+  z-index: 99999;
+  align-items: center;
+  gap: 4px;
+  background: #1e293b;
+  border-radius: 10px;
+  padding: 5px 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.35);
+  pointer-events: all;
+
+  button {
+    background: #334155;
+    color: #e2e8f0;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 9px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s;
+    &:hover { background: #6366f1; color: #fff; }
+  }
+  .ql-img-bar-label {
+    color: #94a3b8;
+    font-size: 11px;
+    white-space: nowrap;
+    margin-right: 2px;
+  }
+  .ql-img-bar-sep {
+    width: 1px;
+    height: 20px;
+    background: #475569;
+    margin: 0 4px;
+  }
+  .ql-img-sz-btn {
+    width: 28px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 2px 4px;
+  }
+  .ql-img-sz-lbl {
+    color: #e2e8f0;
+    font-size: 12px;
+    min-width: 38px;
+    text-align: center;
+  }
+}
+
+/* Quill font picker dropdown label-lar (global) */
+.ql-toolbar .ql-font .ql-picker-label::before      { content: 'Shrift'; }
+.ql-toolbar .ql-font .ql-picker-item[data-value="arial"]::before     { content: 'Arial'; font-family: Arial; }
+.ql-toolbar .ql-font .ql-picker-item[data-value="times"]::before     { content: 'Times New Roman'; font-family: 'Times New Roman'; }
+.ql-toolbar .ql-font .ql-picker-item[data-value="courier"]::before   { content: 'Courier New'; font-family: 'Courier New'; }
+.ql-toolbar .ql-font .ql-picker-item[data-value="georgia"]::before   { content: 'Georgia'; font-family: Georgia; }
+.ql-toolbar .ql-font .ql-picker-item[data-value="verdana"]::before   { content: 'Verdana'; font-family: Verdana; }
+.ql-toolbar .ql-font .ql-picker-item[data-value="tahoma"]::before    { content: 'Tahoma'; font-family: Tahoma; }
+.ql-toolbar .ql-font .ql-picker-item[data-value="trebuchet"]::before { content: 'Trebuchet MS'; font-family: 'Trebuchet MS'; }
+.ql-font-arial     { font-family: Arial, sans-serif !important; }
+.ql-font-times     { font-family: 'Times New Roman', serif !important; }
+.ql-font-courier   { font-family: 'Courier New', monospace !important; }
+.ql-font-georgia   { font-family: Georgia, serif !important; }
+.ql-font-verdana   { font-family: Verdana, sans-serif !important; }
+.ql-font-tahoma    { font-family: Tahoma, sans-serif !important; }
+.ql-font-trebuchet { font-family: 'Trebuchet MS', sans-serif !important; }

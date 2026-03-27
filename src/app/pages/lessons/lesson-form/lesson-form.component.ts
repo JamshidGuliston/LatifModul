@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { environment } from '../../../../environments/environment';
 import { lastValueFrom } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -21,6 +21,37 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { LanguageService } from '../../../core/services/language.service';
 import { QuillModule } from 'ngx-quill';
+import Quill from 'quill';
+
+// ── Font oilasi ──────────────────────────────────────────────
+const FONT_LIST = ['', 'arial', 'times', 'courier', 'georgia', 'verdana', 'tahoma', 'trebuchet'];
+try {
+  const FontClass = Quill.import('attributors/class/font') as any;
+  FontClass.whitelist = FONT_LIST.filter(f => f);
+  Quill.register(FontClass, true);
+} catch { /* already registered */ }
+
+// ── Rasm formatini style atributi bilan kengaytirish ─────────
+try {
+  const BaseImg = Quill.import('formats/image') as any;
+  class StyledImage extends BaseImg {
+    static formats(node: HTMLElement): Record<string, string> {
+      const f: Record<string, string> = super.formats ? super.formats(node) : {};
+      if (node.getAttribute('style')) f['style'] = node.getAttribute('style')!;
+      if (node.getAttribute('width')) f['width'] = node.getAttribute('width')!;
+      return f;
+    }
+    format(name: string, value: string | null) {
+      if (name === 'style' || name === 'width') {
+        if (value) (this as any).domNode.setAttribute(name, value);
+        else (this as any).domNode.removeAttribute(name);
+      } else { super.format(name, value); }
+    }
+  }
+  (StyledImage as any).blotName = 'image';
+  (StyledImage as any).tagName  = 'IMG';
+  Quill.register(StyledImage, true);
+} catch { /* already registered */ }
 
 @Component({
   selector: 'app-lesson-form',
@@ -941,6 +972,39 @@ import { QuillModule } from 'ngx-quill';
       }
     }
 
+    /* ── Font oilalari ─────────────────────────────── */
+    ::ng-deep {
+      .ql-font-arial      span, .ql-font-arial      { font-family: Arial, sans-serif !important; }
+      .ql-font-times      span, .ql-font-times      { font-family: 'Times New Roman', serif !important; }
+      .ql-font-courier    span, .ql-font-courier    { font-family: 'Courier New', monospace !important; }
+      .ql-font-georgia    span, .ql-font-georgia    { font-family: Georgia, serif !important; }
+      .ql-font-verdana    span, .ql-font-verdana    { font-family: Verdana, sans-serif !important; }
+      .ql-font-tahoma     span, .ql-font-tahoma     { font-family: Tahoma, sans-serif !important; }
+      .ql-font-trebuchet  span, .ql-font-trebuchet  { font-family: 'Trebuchet MS', sans-serif !important; }
+
+      /* Editor ichidagi font class lar */
+      .ql-editor .ql-font-arial     { font-family: Arial, sans-serif; }
+      .ql-editor .ql-font-times     { font-family: 'Times New Roman', serif; }
+      .ql-editor .ql-font-courier   { font-family: 'Courier New', monospace; }
+      .ql-editor .ql-font-georgia   { font-family: Georgia, serif; }
+      .ql-editor .ql-font-verdana   { font-family: Verdana, sans-serif; }
+      .ql-editor .ql-font-tahoma    { font-family: Tahoma, sans-serif; }
+      .ql-editor .ql-font-trebuchet { font-family: 'Trebuchet MS', sans-serif; }
+
+      /* Font picker label (toolbar dropdown) */
+      .ql-font .ql-picker-label::before      { content: 'Shrift'; }
+      .ql-font .ql-picker-item[data-value="arial"]::before     { content: 'Arial'; font-family: Arial; }
+      .ql-font .ql-picker-item[data-value="times"]::before     { content: 'Times New Roman'; font-family: 'Times New Roman'; }
+      .ql-font .ql-picker-item[data-value="courier"]::before   { content: 'Courier New'; font-family: 'Courier New'; }
+      .ql-font .ql-picker-item[data-value="georgia"]::before   { content: 'Georgia'; font-family: Georgia; }
+      .ql-font .ql-picker-item[data-value="verdana"]::before   { content: 'Verdana'; font-family: Verdana; }
+      .ql-font .ql-picker-item[data-value="tahoma"]::before    { content: 'Tahoma'; font-family: Tahoma; }
+      .ql-font .ql-picker-item[data-value="trebuchet"]::before { content: 'Trebuchet MS'; font-family: 'Trebuchet MS'; }
+
+      /* Rasm tanlanganda outline */
+      .ql-editor img.ql-img-selected { outline: 2px solid #6366f1; outline-offset: 2px; cursor: move; }
+    }
+
     /* File upload area */
     .file-upload-area {
       border: 2px dashed var(--gray-300);
@@ -1083,7 +1147,8 @@ import { QuillModule } from 'ngx-quill';
     }
   `]
 })
-export class LessonFormComponent implements OnInit {
+export class LessonFormComponent implements OnInit, OnDestroy {
+  private _imgToolbars: HTMLElement[] = [];
   router = inject(Router);
   lang = inject(LanguageService);
   private route = inject(ActivatedRoute);
@@ -1094,10 +1159,14 @@ export class LessonFormComponent implements OnInit {
 
   quillModules = {
     toolbar: [
-      [{ header: [1, 2, 3, false] }],
+      [{ font: FONT_LIST.filter(f => f) }],
+      [{ size: ['small', false, 'large', 'huge'] }],
+      [{ header: [1, 2, 3, 4, 5, 6, false] }],
       ['bold', 'italic', 'underline', 'strike'],
+      [{ script: 'sub' }, { script: 'super' }],
       [{ color: [] }, { background: [] }],
       [{ list: 'ordered' }, { list: 'bullet' }],
+      [{ indent: '-1' }, { indent: '+1' }],
       [{ align: [] }],
       ['blockquote', 'code-block'],
       ['link', 'image'],
@@ -1108,8 +1177,11 @@ export class LessonFormComponent implements OnInit {
 
   contentQuillModules = {
     toolbar: [
-      [{ header: [1, 2, 3, false] }],
+      [{ font: FONT_LIST.filter(f => f) }],
+      [{ size: ['small', false, 'large', 'huge'] }],
+      [{ header: [1, 2, 3, 4, 5, 6, false] }],
       ['bold', 'italic', 'underline', 'strike'],
+      [{ script: 'sub' }, { script: 'super' }],
       [{ color: [] }, { background: [] }],
       [{ list: 'ordered' }, { list: 'bullet' }],
       [{ indent: '-1' }, { indent: '+1' }],
@@ -1154,6 +1226,7 @@ export class LessonFormComponent implements OnInit {
         this.processPastedHtml(quill, html);
       }
     }, true);
+    this.setupImageToolbar(quill);
   }
 
   onContentEditorCreated(quill: any) {
@@ -1165,6 +1238,7 @@ export class LessonFormComponent implements OnInit {
         this.processPastedHtml(quill, html);
       }
     }, true);
+    this.setupImageToolbar(quill);
   }
 
   private async processPastedHtml(quill: any, html: string) {
@@ -1250,7 +1324,7 @@ export class LessonFormComponent implements OnInit {
     this.editingContentId.set(c.id);
     this.contentForm = {
       title: c.title,
-      content_type: c.content_type,
+      content_type: typeof c.content_type === 'object' ? (c.content_type as any)?.id : c.content_type,
       content: c.content || '',
       video_url: c.video_url || '',
       file_url: c.file_url || ''
@@ -1262,9 +1336,18 @@ export class LessonFormComponent implements OnInit {
 
   saveContent(): void {
     const editId = this.editingContentId();
+    const payload: any = {
+      title: this.contentForm.title,
+      content_type: this.contentForm.content_type || null,
+      content: this.contentForm.content || null,
+      video_url: this.contentForm.video_url || null,
+      file_url: this.contentForm.file_url || null,
+    };
+    if (!editId) payload.lesson = this.lessonId;
+
     const action = editId
-      ? this.contentService.updateLessonContent(editId, { ...this.contentForm })
-      : this.contentService.createLessonContent({ ...this.contentForm, lesson: this.lessonId });
+      ? this.contentService.updateLessonContent(editId, payload)
+      : this.contentService.createLessonContent(payload);
 
     action.subscribe({
       next: (c) => {
@@ -1349,5 +1432,104 @@ export class LessonFormComponent implements OnInit {
       'audio': 'audiotrack'
     };
     return icons[typeName?.toLowerCase() || ''] || 'description';
+  }
+
+  private setupImageToolbar(quill: any): void {
+    const bar = document.createElement('div');
+    bar.className = 'ql-img-floatbar';
+    bar.innerHTML = `
+      <span class="ql-img-bar-label">Joylashuv:</span>
+      <button title="Chapga" data-ac="left">◀ Chap</button>
+      <button title="Markaz" data-ac="center">▬ Markaz</button>
+      <button title="O'ngga" data-ac="right">O'ng ▶</button>
+      <button title="Oddiy" data-ac="none">× Bekor</button>
+      <span class="ql-img-bar-sep"></span>
+      <button title="Kichraytir" data-ac="shrink" class="ql-img-sz-btn">−</button>
+      <span class="ql-img-sz-lbl">100%</span>
+      <button title="Kattalashtir" data-ac="grow" class="ql-img-sz-btn">+</button>
+      <span class="ql-img-bar-sep"></span>
+      <button title="To'liq kenglik" data-ac="full">⟷</button>
+    `;
+    document.body.appendChild(bar);
+    this._imgToolbars.push(bar);
+
+    let activeImg: HTMLImageElement | null = null;
+    const szLbl = bar.querySelector('.ql-img-sz-lbl') as HTMLElement;
+
+    const updatePct = () => {
+      if (!activeImg) return;
+      const cw = activeImg.parentElement?.clientWidth || 600;
+      const w  = activeImg.width || cw;
+      szLbl.textContent = `${Math.round((w / cw) * 100)}%`;
+    };
+
+    const reposition = () => {
+      if (!activeImg) return;
+      const r = activeImg.getBoundingClientRect();
+      const top = r.top - 42;
+      bar.style.top  = `${top < 4 ? r.bottom + 4 : top}px`;
+      bar.style.left = `${Math.max(4, r.left)}px`;
+    };
+
+    quill.root.addEventListener('click', (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.tagName === 'IMG') {
+        activeImg = t as HTMLImageElement;
+        updatePct();
+        bar.style.display = 'flex';
+        reposition();
+        quill.root.querySelectorAll('img').forEach((im: HTMLImageElement) =>
+          im.classList.remove('ql-img-selected'));
+        activeImg.classList.add('ql-img-selected');
+      } else {
+        bar.style.display = 'none';
+        activeImg?.classList.remove('ql-img-selected');
+        activeImg = null;
+      }
+    });
+
+    const _scroll = () => { if (activeImg) reposition(); };
+    document.addEventListener('scroll', _scroll, true);
+    window.addEventListener('resize', _scroll);
+
+    document.addEventListener('click', (e: MouseEvent) => {
+      if (activeImg && !quill.root.contains(e.target as Node) && !bar.contains(e.target as Node)) {
+        bar.style.display = 'none';
+        activeImg.classList.remove('ql-img-selected');
+        activeImg = null;
+      }
+    });
+
+    bar.addEventListener('mousedown', (e: MouseEvent) => {
+      e.preventDefault();
+      const btn = (e.target as HTMLElement).closest('[data-ac]') as HTMLElement;
+      if (!btn || !activeImg) return;
+      const ac = btn.dataset['ac'];
+      const cw = activeImg.parentElement?.clientWidth || 600;
+      const w  = activeImg.clientWidth || cw;
+      const step = Math.max(40, Math.round(w * 0.1));
+      switch (ac) {
+        case 'left':   activeImg.style.cssText = `float:left; margin:0 16px 8px 0; display:inline; max-width:60%;`; break;
+        case 'center': activeImg.style.cssText = `display:block; margin:8px auto; float:none;`; break;
+        case 'right':  activeImg.style.cssText = `float:right; margin:0 0 8px 16px; display:inline; max-width:60%;`; break;
+        case 'none':   activeImg.removeAttribute('style'); break;
+        case 'full':   activeImg.style.cssText = `display:block; width:100%; height:auto; float:none; margin:8px 0;`; break;
+        case 'shrink':
+          activeImg.style.width  = `${Math.max(60, w - step)}px`;
+          activeImg.style.height = 'auto';
+          break;
+        case 'grow':
+          activeImg.style.width  = `${Math.min(cw, w + step)}px`;
+          activeImg.style.height = 'auto';
+          break;
+      }
+      updatePct();
+      reposition();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this._imgToolbars.forEach(el => el.parentNode?.removeChild(el));
+    this._imgToolbars = [];
   }
 }
