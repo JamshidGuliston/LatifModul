@@ -8,9 +8,11 @@ import { StudentAiChatComponent } from '../../shared/components/student-ai-chat/
 import { ModuleService } from '../../core/services/module.service';
 import { LessonService } from '../../core/services/lesson.service';
 import { StudentService } from '../../core/services/student.service';
+import { ProgressService } from '../../core/services/progress.service';
 import { Module } from '../../core/models/module.model';
 import { Lesson } from '../../core/models/lesson.model';
 import { Student } from '../../core/models/student.model';
+import { StudentLessonProgress } from '../../core/models/progress.model';
 
 @Component({
   selector: 'app-student-module-detail',
@@ -88,15 +90,27 @@ import { Student } from '../../core/models/student.model';
             } @else {
               <div class="lessons-list">
                 @for (lesson of lessons(); track lesson.id; let i = $index) {
-                  <div class="lesson-card" (click)="openLesson(lesson.id)">
-                    <div class="lesson-number">{{ i + 1 }}</div>
+                  <div class="lesson-card"
+                       [class.locked]="isLessonLocked(lesson.id, i)"
+                       (click)="openLesson(lesson.id, i)">
+                    <div class="lesson-number" [class.locked-num]="isLessonLocked(lesson.id, i)">
+                      @if (isLessonLocked(lesson.id, i)) {
+                        <mat-icon>lock</mat-icon>
+                      } @else {
+                        {{ i + 1 }}
+                      }
+                    </div>
                     <div class="lesson-info">
                       <h3>{{ lesson.title }}</h3>
                       @if (lesson.description) {
                         <p>{{ lesson.description | stripHtml }}</p>
                       }
                     </div>
-                    <mat-icon class="lesson-arrow">chevron_right</mat-icon>
+                    @if (isLessonLocked(lesson.id, i)) {
+                      <mat-icon class="lesson-lock-icon">lock</mat-icon>
+                    } @else {
+                      <mat-icon class="lesson-arrow">chevron_right</mat-icon>
+                    }
                   </div>
                 }
               </div>
@@ -278,9 +292,15 @@ import { Student } from '../../core/models/student.model';
       cursor: pointer;
       transition: transform 0.2s, box-shadow 0.2s;
 
-      &:hover {
+      &:hover:not(.locked) {
         transform: translateX(4px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      }
+
+      &.locked {
+        cursor: not-allowed;
+        opacity: 0.55;
+        background: #f9fafb;
       }
     }
 
@@ -296,15 +316,21 @@ import { Student } from '../../core/models/student.model';
       font-weight: 700;
       font-size: 1rem;
       flex-shrink: 0;
+
+      &.locked-num {
+        background: #e5e7eb;
+        color: #9ca3af;
+        mat-icon { font-size: 20px; width: 20px; height: 20px; }
+      }
     }
 
     .lesson-info {
       flex: 1;
       overflow: hidden;
       h3 { font-size: 1rem; font-weight: 600; color: var(--gray-900); margin: 0 0 2px; }
-      p { 
-        font-size: 0.85rem; 
-        color: var(--gray-500); 
+      p {
+        font-size: 0.85rem;
+        color: var(--gray-500);
         margin: 0;
         display: -webkit-box;
         -webkit-line-clamp: 2;
@@ -316,6 +342,10 @@ import { Student } from '../../core/models/student.model';
 
     .lesson-arrow {
       color: var(--gray-400);
+    }
+
+    .lesson-lock-icon {
+      color: #9ca3af;
     }
 
     @media (max-width: 768px) {
@@ -330,11 +360,13 @@ export class StudentModuleDetailComponent implements OnInit {
   private moduleService = inject(ModuleService);
   private lessonService = inject(LessonService);
   private studentService = inject(StudentService);
+  private progressService = inject(ProgressService);
 
   module = signal<Module | null>(null);
   lessons = signal<Lesson[]>([]);
   currentStudent = signal<Student | null>(null);
   isLoading = signal(true);
+  private lessonProgressMap = signal<Map<string, StudentLessonProgress>>(new Map());
 
   ngOnInit() {
     this.currentStudent.set(this.studentService.getCurrentStudent());
@@ -349,11 +381,33 @@ export class StudentModuleDetailComponent implements OnInit {
     });
 
     this.lessonService.getAll(moduleId).subscribe({
-      next: (lessons) => this.lessons.set(lessons)
+      next: (lessons) => {
+        this.lessons.set(lessons);
+        this.loadLessonProgress(moduleId);
+      }
     });
   }
 
-  openLesson(lessonId: string) {
+  private loadLessonProgress(moduleId: string) {
+    this.progressService.getLessonProgress({ lesson__module: moduleId }).subscribe({
+      next: (progressList) => {
+        const map = new Map<string, StudentLessonProgress>();
+        progressList.forEach(p => map.set(p.lesson, p));
+        this.lessonProgressMap.set(map);
+      }
+    });
+  }
+
+  isLessonLocked(lessonId: string, index: number): boolean {
+    const mod = this.module();
+    if (!mod?.is_sequential) return false;
+    if (index === 0) return false;
+    const progress = this.lessonProgressMap().get(lessonId);
+    return !progress?.is_unlocked;
+  }
+
+  openLesson(lessonId: string, index: number) {
+    if (this.isLessonLocked(lessonId, index)) return;
     const moduleId = this.route.snapshot.paramMap.get('moduleId');
     this.router.navigate(['/student/modules', moduleId, 'lessons', lessonId]);
   }
