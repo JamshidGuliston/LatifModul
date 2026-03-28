@@ -26,6 +26,11 @@ export const routes: Routes = [
         canActivate: [studentAuthGuard]
     },
     {
+        path: 'student/modules/:moduleId/lessons/:lessonId/assignments/:assignmentId',
+        loadComponent: () => import('./pages/student-assignment/student-assignment.component').then(m => m.StudentAssignmentComponent),
+        canActivate: [studentAuthGuard]
+    },
+    {
         path: '',
         loadComponent: () => import('./layout/layout.component').then(m => m.LayoutComponent),
         children: [

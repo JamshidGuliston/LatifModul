@@ -685,7 +685,7 @@ export class AssignmentFormComponent implements OnInit {
           this.lessonId = a.lesson;
           this.form = {
             title: a.title, description: a.description,
-            assignment_type: a.assignment_type,
+            assignment_type: typeof a.assignment_type === 'object' ? (a.assignment_type as any)?.id : a.assignment_type,
             time_limit: a.time_limit, attempts_allowed: a.attempts_allowed,
             order_index: a.order_index, is_published: a.is_published
           };

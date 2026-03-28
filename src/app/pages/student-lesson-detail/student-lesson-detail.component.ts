@@ -195,23 +195,28 @@ import { environment } from '../../../environments/environment';
                     }
 
                     <div class="assignment-footer">
-                      @if (getAttempt(a.id); as attempt) {
-                        <div class="attempt-result" [class.passed]="attempt.is_passed" [class.failed]="attempt.is_passed === false">
-                          <mat-icon>{{ attempt.is_passed ? 'check_circle' : 'cancel' }}</mat-icon>
-                          <span>{{ attempt.score ?? 0 }} / {{ attempt.max_score }} ball</span>
-                          @if (attempt.percentage != null) {
-                            <span class="percent">— {{ attempt.percentage | number:'1.0-1' }}%</span>
-                          }
-                          @if (attempt.is_passed === false) {
-                            <span class="failed-label">Muvaffaqiyatsiz</span>
-                          }
+                      <div class="footer-left">
+                        @if (getAttempt(a.id); as attempt) {
+                          <div class="attempt-result" [class.passed]="attempt.is_passed" [class.failed]="attempt.is_passed === false">
+                            <mat-icon>{{ attempt.is_passed ? 'check_circle' : 'cancel' }}</mat-icon>
+                            <span>{{ attempt.score ?? 0 }} / {{ attempt.max_score }} ball</span>
+                            @if (attempt.percentage != null) {
+                              <span class="percent">— {{ attempt.percentage | number:'1.0-1' }}%</span>
+                            }
+                          </div>
+                        }
+                        <div class="attempt-info">
+                          <mat-icon>timer</mat-icon>
+                          @if (a.time_limit) { {{ a.time_limit }} daqiqa · }
+                          {{ a.attempts_allowed }} urinish
                         </div>
-                      }
-                      <div class="attempt-info">
-                        <mat-icon>timer</mat-icon>
-                        @if (a.time_limit) { {{ a.time_limit }} daqiqa · }
-                        {{ a.attempts_allowed }} urinish
                       </div>
+                      <button class="btn-start-asgn"
+                        [class.redo]="getAttempt(a.id) != null"
+                        (click)="openAssignment(a)">
+                        <mat-icon>{{ getAttempt(a.id) ? 'replay' : 'play_arrow' }}</mat-icon>
+                        {{ getAttempt(a.id) ? 'Qayta' : 'Boshlash' }}
+                      </button>
                     </div>
                   </div>
                 }
@@ -690,6 +695,34 @@ import { environment } from '../../../environments/environment';
       flex-wrap: wrap;
     }
 
+    .footer-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .btn-start-asgn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.18s;
+      white-space: nowrap;
+      flex-shrink: 0;
+      mat-icon { font-size: 17px; width: 17px; height: 17px; }
+      &:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,0.35); }
+      &.redo { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    }
+
     .attempt-result {
       display: flex;
       align-items: center;
@@ -871,15 +904,22 @@ export class StudentLessonDetailComponent implements OnInit {
   }
 
   getAssignmentIcon(a: Assignment): string {
-    const type = (a.assignment_type ?? '').toLowerCase();
-    if (type.includes('quiz') || type.includes('test')) return 'quiz';
-    if (type.includes('writing') || type.includes('essay')) return 'edit_note';
-    if (type.includes('upload') || type.includes('file')) return 'upload_file';
+    const name = (typeof a.assignment_type === 'object' ? a.assignment_type?.name : a.assignment_type as any || '').toLowerCase();
+    if (name.includes('quiz') || name.includes('test')) return 'quiz';
+    if (name.includes('writing') || name.includes('essay')) return 'edit_note';
+    if (name.includes('upload') || name.includes('file')) return 'upload_file';
     return 'assignment';
   }
 
   getAssignmentTypeName(a: Assignment): string {
-    return a.assignment_type ?? 'Topshiriq';
+    if (!a.assignment_type) return 'Topshiriq';
+    return typeof a.assignment_type === 'object' ? a.assignment_type.name : (a.assignment_type as any);
+  }
+
+  openAssignment(a: Assignment): void {
+    const moduleId = this.route.snapshot.paramMap.get('moduleId');
+    const lessonId = this.route.snapshot.paramMap.get('lessonId');
+    this.router.navigate(['/student/modules', moduleId, 'lessons', lessonId, 'assignments', a.id]);
   }
 
   getSafeHtml(html: string): SafeHtml {

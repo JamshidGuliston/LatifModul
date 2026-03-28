@@ -38,4 +38,20 @@ export class ProgressService {
   getAttemptDetail(id: string): Observable<AssignmentAttempt & { answers: QuestionAnswer[] }> {
     return this.api.get(`/attempts/${id}/`);
   }
+
+  createAttempt(data: { student: string; assignment: string; max_score: number }): Observable<AssignmentAttempt> {
+    return this.api.post<AssignmentAttempt>('/attempts/', data);
+  }
+
+  submitAttempt(id: string): Observable<AssignmentAttempt> {
+    return this.api.post<AssignmentAttempt>(`/attempts/${id}/submit/`, {});
+  }
+
+  saveAnswer(data: { attempt: string; question: string; answer_data: any }): Observable<QuestionAnswer> {
+    return this.api.post<QuestionAnswer>('/answers/', data);
+  }
+
+  getAnswers(attemptId: string): Observable<QuestionAnswer[]> {
+    return this.api.getList<QuestionAnswer>('/answers/', { attempt_id: attemptId });
+  }
 }

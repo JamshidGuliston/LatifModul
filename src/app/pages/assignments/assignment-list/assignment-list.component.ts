@@ -670,13 +670,14 @@ export class AssignmentListComponent implements OnInit {
     return Math.round((count / this.maxQuestions) * 100);
   }
 
-  getTypeName(typeId: string): string {
-    const t = this.assignmentTypes().find(t => t.id === typeId);
-    return t?.name || '';
+  getTypeName(type: any): string {
+    if (!type) return '';
+    if (typeof type === 'object') return type.name || '';
+    return this.assignmentTypes().find(t => t.id === type)?.name || '';
   }
 
-  getTypeIcon(typeId: string): string {
-    const name = this.getTypeName(typeId).toLowerCase();
+  getTypeIcon(type: any): string {
+    const name = this.getTypeName(type).toLowerCase();
     if (name.includes('test') || name.includes('quiz')) return 'quiz';
     if (name.includes('homework') || name.includes('uy')) return 'home';
     if (name.includes('exam') || name.includes('imtihon')) return 'school';
