@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
@@ -8,10 +8,16 @@ import { catchError, of } from 'rxjs';
 import { AssignmentService } from '../../core/services/assignment.service';
 import { ProgressService } from '../../core/services/progress.service';
 import { StudentService } from '../../core/services/student.service';
+import { GeminiService } from '../../core/services/gemini.service';
 import { AssignmentDetail, AssignmentQuestion } from '../../core/models/assignment.model';
 import { AssignmentAttempt } from '../../core/models/progress.model';
 
-type Phase = 'loading' | 'intro' | 'doing' | 'submitting' | 'result';
+type Phase = 'loading' | 'intro' | 'doing' | 'submitting' | 'grading' | 'result';
+
+interface AiFeedback {
+  score: number;
+  feedback: string;
+}
 
 @Component({
   selector: 'app-student-assignment',
@@ -111,7 +117,14 @@ type Phase = 'loading' | 'intro' | 'doing' | 'submitting' | 'result';
                     @if (isAnswered(q.id)) { <mat-icon>check</mat-icon> }
                     @else { {{ qi + 1 }} }
                   </div>
-                  <div class="q-text" [innerHTML]="safe(q.question_text)"></div>
+                  @if (isImageUrl(q.question_text) && getQuestionType(q) !== 'matching') {
+                    <div class="q-text"><img class="q-img" [src]="q.question_text" alt="question"></div>
+                  } @else if (!isImageUrl(q.question_text)) {
+                    <div class="q-text" [innerHTML]="safe(q.question_text)"></div>
+                  } @else {
+                    <!-- matching + image: shown inside match-wrap -->
+                    <div class="q-text q-text-muted">Rasmni toping</div>
+                  }
                   @if (q.points > 0) {
                     <span class="q-pts">{{ q.points }} ball</span>
                   }
@@ -152,14 +165,64 @@ type Phase = 'loading' | 'intro' | 'doing' | 'submitting' | 'result';
                     </div>
                   }
 
+                  <!-- Matching (one-to-many, supports images) -->
+                  @if (getQuestionType(q) === 'matching') {
+                    <div class="match-wrap">
+                      <!-- Left term: image or text -->
+                      @if (isImageUrl(q.question_text)) {
+                        <div class="match-term-img">
+                          <img [src]="q.question_text" alt="term">
+                        </div>
+                      }
+                      <p class="match-hint">
+                        <mat-icon>info</mat-icon>
+                        Mos keladigan barcha variantlarni belgilang
+                      </p>
+                      <div class="match-opts">
+                        @for (opt of matchPool(q); track opt) {
+                          <label class="option match-opt"
+                            [class.selected]="isMatchSelected(q.id, opt)"
+                            (click)="toggleMatch(q.id, opt)">
+                            <input type="checkbox" style="display:none"
+                              [checked]="isMatchSelected(q.id, opt)">
+                            <span class="match-check">
+                              <mat-icon>{{ isMatchSelected(q.id, opt) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+                            </span>
+                            @if (isImageUrl(opt)) {
+                              <img class="match-opt-img" [src]="opt" alt="option">
+                            } @else {
+                              <span class="opt-text">{{ opt }}</span>
+                            }
+                          </label>
+                        }
+                      </div>
+                    </div>
+                  }
+
                   <!-- Short answer / Essay / Default -->
                   @if (getQuestionType(q) === 'short_answer' || getQuestionType(q) === 'essay' || getQuestionType(q) === 'text') {
+                    @if (isImageUrl(q.question_text)) {
+                      <div class="img-question-wrap">
+                        <img [src]="q.question_text" alt="qurilma rasmi" class="img-question">
+                        <p class="img-q-label">
+                          <mat-icon>edit</mat-icon>
+                          Yuqoridagi qurilmaga ta'rif yozing (o'zbek tilida):
+                        </p>
+                      </div>
+                    }
                     <textarea class="text-answer"
-                      [rows]="getQuestionType(q) === 'essay' ? 6 : 3"
+                      [rows]="getQuestionType(q) === 'essay' ? 6 : 4"
                       [value]="getAnswer(q.id) || ''"
                       (input)="setAnswer(q.id, $any($event.target).value)"
-                      placeholder="Javobingizni yozing...">
+                      [placeholder]="isImageUrl(q.question_text)
+                        ? 'Masalan: Bu qurilma sistema bloki bo\'lib, kompyuterning asosiy qismidir...'
+                        : 'Javobingizni yozing...'">
                     </textarea>
+                    @if (isImageUrl(q.question_text)) {
+                      <div class="ai-badge">
+                        <mat-icon>auto_awesome</mat-icon> AI tomonidan tekshiriladi
+                      </div>
+                    }
                   }
 
                 </div>
@@ -191,6 +254,17 @@ type Phase = 'loading' | 'intro' | 'doing' | 'submitting' | 'result';
           </div>
         }
 
+        <!-- GRADING -->
+        @if (phase() === 'grading') {
+          <div class="center-state">
+            <div class="ai-spin">
+              <mat-icon>auto_awesome</mat-icon>
+            </div>
+            <p class="grading-txt">AI javoblarni tekshirmoqda...</p>
+            <p class="grading-sub">{{ gradingProgress() }}</p>
+          </div>
+        }
+
         <!-- RESULT -->
         @if (phase() === 'result' && attempt()) {
           <div class="result-card">
@@ -206,6 +280,29 @@ type Phase = 'loading' | 'intro' | 'doing' | 'submitting' | 'result';
             @if (attempt()!.percentage != null) {
               <div class="score-pct">{{ attempt()!.percentage | number:'1.0-1' }}%</div>
             }
+            @if (aiFeedbacks().size > 0) {
+              <div class="ai-feedbacks">
+                <h3><mat-icon>auto_awesome</mat-icon> AI baholash natijalari</h3>
+                @for (q of aiGradedQuestions(); track q.id; let qi = $index) {
+                  @if (aiFeedbacks().get(q.id); as fb) {
+                    <div class="ai-fb-item">
+                      <div class="ai-fb-header">
+                        <img [src]="q.question_text" alt="qurilma" class="ai-fb-img">
+                        <div class="ai-fb-score">
+                          <span class="fb-pts">{{ fb.score }}</span>
+                          <span class="fb-max">/ {{ q.points }} ball</span>
+                        </div>
+                      </div>
+                      <div class="ai-fb-text">
+                        <mat-icon>auto_awesome</mat-icon>
+                        {{ fb.feedback }}
+                      </div>
+                    </div>
+                  }
+                }
+              </div>
+            }
+
             <div class="result-actions">
               <button class="btn-back" (click)="goBack()">
                 <mat-icon>arrow_back</mat-icon>
@@ -344,6 +441,39 @@ type Phase = 'loading' | 'intro' | 'doing' | 'submitting' | 'result';
       mat-icon { font-size: 20px; width: 20px; height: 20px; }
     }
 
+    /* Question image */
+    .q-img { max-width: 100%; max-height: 200px; border-radius: 8px; object-fit: contain; }
+    .q-text-muted { color: #94a3b8; font-size: 0.85rem; font-style: italic; }
+
+    /* Matching */
+    .match-wrap { display: flex; flex-direction: column; gap: 10px; }
+    .match-term-img {
+      display: flex; justify-content: center;
+      padding: 12px; background: #f8fafc; border-radius: 12px;
+      border: 1.5px solid #e2e8f0; margin-bottom: 4px;
+      img { max-width: 100%; max-height: 180px; object-fit: contain; border-radius: 8px; }
+    }
+    .match-hint {
+      display: flex; align-items: center; gap: 6px; margin: 0;
+      font-size: 0.8rem; color: #92400e; background: #fef3c7;
+      padding: 8px 12px; border-radius: 8px;
+      mat-icon { font-size: 15px; width: 15px; height: 15px; flex-shrink: 0; }
+    }
+    .match-opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .match-opt {
+      align-items: flex-start; padding: 8px;
+      &.selected { border-color: #10b981; background: #f0fdf4; color: #065f46; font-weight: 600; }
+      &.selected .match-check mat-icon { color: #10b981; }
+    }
+    .match-check {
+      flex-shrink: 0; align-self: flex-start;
+      mat-icon { font-size: 22px; width: 22px; height: 22px; color: #cbd5e1; }
+    }
+    .match-opt-img {
+      width: 100%; max-height: 100px; object-fit: contain;
+      border-radius: 6px; margin-top: 4px;
+    }
+
     /* Text answer */
     .text-answer {
       width: 100%; box-sizing: border-box;
@@ -408,6 +538,7 @@ export class StudentAssignmentComponent implements OnInit {
   private progressService = inject(ProgressService);
   private studentService = inject(StudentService);
   private sanitizer = inject(DomSanitizer);
+  private geminiService = inject(GeminiService);
 
   phase = signal<Phase>('loading');
   assignment = signal<AssignmentDetail | null>(null);
@@ -417,6 +548,14 @@ export class StudentAssignmentComponent implements OnInit {
 
   private answersMap = new Map<string, any>();
   answeredCount = signal(0);
+  aiFeedbacks = signal<Map<string, AiFeedback>>(new Map());
+  gradingProgress = signal('');
+
+  aiGradedQuestions = computed(() =>
+    this.questions().filter(q =>
+      this.getQuestionType(q) === 'short_answer' && this.isImageUrl(q.question_text)
+    )
+  );
 
   private moduleId = '';
   private lessonId = '';
@@ -473,6 +612,7 @@ export class StudentAssignmentComponent implements OnInit {
     if (!student || !a) return;
     this.phase.set('loading');
     this.answersMap.clear();
+    this.matchPoolCache.clear();
     this.answeredCount.set(0);
 
     this.progressService.createAttempt({
@@ -489,7 +629,10 @@ export class StudentAssignmentComponent implements OnInit {
   }
 
   isAnswered(qId: string): boolean {
-    return this.answersMap.has(qId) && this.answersMap.get(qId) !== null && this.answersMap.get(qId) !== '';
+    if (!this.answersMap.has(qId)) return false;
+    const v = this.answersMap.get(qId);
+    if (Array.isArray(v)) return v.length > 0;
+    return v !== null && v !== '' && v !== undefined;
   }
 
   getAnswer(qId: string): any {
@@ -515,13 +658,31 @@ export class StudentAssignmentComponent implements OnInit {
     this.progressService.submitAttempt(att.id).subscribe({
       next: (result) => {
         this.attempt.set(result);
-        this.phase.set('result');
+        this.gradeWithAI();
       },
       error: () => {
-        // Even on error show result with what we have
-        this.phase.set('result');
+        this.gradeWithAI();
       },
     });
+  }
+
+  private async gradeWithAI() {
+    const toGrade = this.aiGradedQuestions();
+    if (!toGrade.length) {
+      this.phase.set('result');
+      return;
+    }
+    this.phase.set('grading');
+    for (let i = 0; i < toGrade.length; i++) {
+      const q = toGrade[i];
+      this.gradingProgress.set(`${i + 1} / ${toGrade.length} tekshirilmoqda...`);
+      const answer = this.answersMap.get(q.id) || '';
+      if (answer) {
+        const fb = await this.geminiService.gradeImageAnswer(q.question_text, answer, q.points);
+        this.aiFeedbacks.update(m => { const nm = new Map(m); nm.set(q.id, fb); return nm; });
+      }
+    }
+    this.phase.set('result');
   }
 
   goBack() {
@@ -532,7 +693,53 @@ export class StudentAssignmentComponent implements OnInit {
     const data = q.question_data || {};
     if (data.type) return data.type.toLowerCase();
     if (data.options?.length) return 'multiple_choice';
+    // matching: has correct_answer + distractors field
+    if (q.correct_answer !== undefined && data.distractors !== undefined) return 'matching';
     return 'short_answer';
+  }
+
+  // ── Matching helpers ──────────────────────────────────────────
+  private matchPoolCache = new Map<string, string[]>();
+
+  matchPool(q: AssignmentQuestion): string[] {
+    if (!this.matchPoolCache.has(q.id)) {
+      // correct_answer may be a single string or an array (one-to-many)
+      const corrects: string[] = Array.isArray(q.correct_answer)
+        ? q.correct_answer : (q.correct_answer ? [q.correct_answer] : []);
+      const distractors: string[] = q.question_data?.distractors || [];
+      const pool = [...new Set([...corrects, ...distractors])].filter(Boolean);
+      // Fisher-Yates shuffle
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      this.matchPoolCache.set(q.id, pool);
+    }
+    return this.matchPoolCache.get(q.id)!;
+  }
+
+  isMatchSelected(qId: string, opt: string): boolean {
+    const ans: string[] = this.answersMap.get(qId) || [];
+    return ans.includes(opt);
+  }
+
+  toggleMatch(qId: string, opt: string) {
+    const current: string[] = this.answersMap.get(qId) || [];
+    const updated = current.includes(opt)
+      ? current.filter(o => o !== opt)
+      : [...current, opt];
+
+    const wasAnswered = this.isAnswered(qId);
+    this.answersMap.set(qId, updated);
+    const nowAnswered = updated.length > 0;
+    if (!wasAnswered && nowAnswered) this.answeredCount.update(n => n + 1);
+    if (wasAnswered && !nowAnswered) this.answeredCount.update(n => n - 1);
+
+    const att = this.attempt();
+    if (!att) return;
+    this.progressService.saveAnswer({ attempt: att.id, question: qId, answer_data: { selected: updated } })
+      .pipe(catchError(() => of(null)))
+      .subscribe();
   }
 
   getTypeIcon(): string {
@@ -543,6 +750,17 @@ export class StudentAssignmentComponent implements OnInit {
     if (n.includes('exam') || n.includes('imtihon')) return 'school';
     if (n.includes('homework') || n.includes('uy')) return 'home';
     return 'assignment';
+  }
+
+  isImageUrl(val: string): boolean {
+    if (!val || typeof val !== 'string') return false;
+    const lower = val.toLowerCase().trim();
+    return (
+      lower.startsWith('http') ||
+      lower.startsWith('/media/') ||
+      lower.startsWith('/static/') ||
+      /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/.test(lower)
+    );
   }
 
   safe(html: string): SafeHtml {

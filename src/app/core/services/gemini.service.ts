@@ -70,4 +70,67 @@ export class GeminiService {
             throw error;
         }
     }
+
+    /**
+     * Rasmni yuklab base64 ga o'giradi
+     */
+    private async fetchImageAsBase64(url: string): Promise<{ data: string; mimeType: string }> {
+        const response = await fetch(url);
+        const buffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        bytes.forEach(b => binary += String.fromCharCode(b));
+        const data = btoa(binary);
+        const mimeType = response.headers.get('content-type') || 'image/jpeg';
+        return { data, mimeType };
+    }
+
+    /**
+     * Rasm + talaba ta'rifini AI ga yuboradi, baholaydi va feedback qaytaradi.
+     * @returns { score: 0-100, feedback: string }
+     */
+    async gradeImageAnswer(
+        imageUrl: string,
+        studentAnswer: string,
+        maxPoints: number = 10
+    ): Promise<{ score: number; feedback: string }> {
+        try {
+            const model = this.genAI.getGenerativeModel({ model: this.MODEL_NAME });
+            const image = await this.fetchImageAsBase64(imageUrl);
+
+            const prompt = `Sen o'zbek tili bo'yicha kompyuter fanlari o'qituvchisisisan.
+Talaba quyidagi kompyuter qurilmasi rasmini ko'rib, unga o'zbek tilida ta'rif yozdi.
+
+Talabaning ta'rifi: "${studentAnswer}"
+
+Maksimal ball: ${maxPoints}
+
+Iltimos, talabaning ta'rifini quyidagi mezonlar bo'yicha baholang:
+- Rasmda tasvirlangan qurilmani to'g'ri aniqlaganmi?
+- Ta'rif to'liq va aniqmi?
+- O'zbek tili to'g'ri ishlatilganmi?
+
+Javobni FAQAT quyidagi JSON formatda ber (boshqa hech narsa yozma):
+{"score": <0 dan ${maxPoints} gacha son>, "feedback": "<o'zbek tilida 1-2 gap izoh>"}`;
+
+            const result = await model.generateContent([
+                { inlineData: { data: image.data, mimeType: image.mimeType } },
+                prompt
+            ]);
+
+            const text = result.response.text().trim();
+            const match = text.match(/\{[\s\S]*?\}/);
+            if (match) {
+                const parsed = JSON.parse(match[0]);
+                return {
+                    score: Math.min(Math.max(Number(parsed.score) || 0, 0), maxPoints),
+                    feedback: parsed.feedback || ''
+                };
+            }
+            return { score: 0, feedback: text };
+        } catch (err) {
+            console.error('AI grading error:', err);
+            return { score: 0, feedback: 'AI tekshirishda xatolik yuz berdi.' };
+        }
+    }
 }
