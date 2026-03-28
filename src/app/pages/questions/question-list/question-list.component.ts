@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { QuestionService } from '../../../core/services/question.service';
 import { AssignmentService } from '../../../core/services/assignment.service';
 import { Question } from '../../../core/models/question.model';
@@ -94,7 +95,7 @@ import { LanguageService } from '../../../core/services/language.service';
                 </div>
 
                 <div class="qc-body">
-                  <p class="q-text">{{ q.question_text }}</p>
+                  <p class="q-text" [innerHTML]="safe(q.question_text)"></p>
 
                   <div class="q-meta">
                     <div class="q-badge points">
@@ -488,6 +489,11 @@ export class QuestionListComponent implements OnInit {
   private assignmentService = inject(AssignmentService);
   private dialog = inject(MatDialog);
   private lang = inject(LanguageService);
+  private sanitizer = inject(DomSanitizer);
+
+  safe(html: string): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(html || '');
+  }
 
   loading = signal(true);
   questions = signal<Question[]>([]);

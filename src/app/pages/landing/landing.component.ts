@@ -51,70 +51,71 @@ import { environment } from '../../../environments/environment';
 
       <!-- Hero Section -->
       <header id="home" class="hero-section">
+        <div class="hero-bg">
+          <div class="glow-orb primary-orb"></div>
+          <div class="glow-orb secondary-orb"></div>
+          <div class="grid-overlay"></div>
+        </div>
         <div class="hero-content">
-          <h1 class="hero-title">
-            <span class="highlight">{{ 'landing.heroHighlight' | translate }}</span> {{ 'landing.heroTitle' | translate }}
+          <div class="tech-badge animate-fade-in">
+            <span class="pulse-dot"></span> {{ 'landing.heroHighlight' | translate }}
+          </div>
+          <h1 class="hero-title animate-slide-up">
+            <span class="highlight text-gradient">{{ 'landing.heroHighlight' | translate }}</span><br/>
+            {{ 'landing.heroTitle' | translate }}
           </h1>
-          <p class="hero-subtitle">
+          <p class="hero-subtitle animate-slide-up-delay">
             {{ 'landing.heroSubtitle' | translate }}
           </p>
-          <div class="hero-actions">
-            <button mat-flat-button color="primary" class="cta-btn" (click)="onBoshlash()">
-              {{ 'landing.start' | translate }}
+          <div class="hero-actions animate-slide-up-delay-2">
+            <button mat-flat-button color="primary" class="cta-btn primary-glow" (click)="onBoshlash()">
+              <span class="btn-text">{{ 'landing.start' | translate }}</span>
               <mat-icon>arrow_forward</mat-icon>
             </button>
             <button mat-stroked-button class="secondary-btn" (click)="scrollToModules()">
-              {{ 'landing.viewCourses' | translate }}
+              <mat-icon>play_circle_outline</mat-icon>
+              <span class="btn-text">{{ 'landing.viewCourses' | translate }}</span>
             </button>
           </div>
-          <div class="stats-row">
-            <div class="stat-item">
+          <div class="stats-row animate-slide-up-delay-3">
+            <div class="stat-item glass-panel">
               <span class="stat-value">{{ modules().length }}+</span>
               <span class="stat-label">{{ 'landing.statModules' | translate }}</span>
             </div>
-            <div class="stat-item">
+            <div class="stat-item glass-panel">
               <span class="stat-value">500+</span>
               <span class="stat-label">{{ 'landing.statStudents' | translate }}</span>
             </div>
-            <div class="stat-item">
-              <span class="stat-value">4.9</span>
+            <div class="stat-item glass-panel">
+              <span class="stat-value rating-val">4.9 <mat-icon class="star-icon" style="font-size: 1.5rem; width: 1.5rem; height: 1.5rem;">star</mat-icon></span>
               <span class="stat-label">{{ 'landing.statRating' | translate }}</span>
             </div>
           </div>
         </div>
-        <div class="hero-image">
-          <div class="image-wrapper">
-             <!-- 3D Laptop Illustration -->
-             <div class="laptop-3d">
-               <div class="laptop-screen">
-                 <div class="screen-content">
-                   <div class="code-line line-1"></div>
-                   <div class="code-line line-2"></div>
-                   <div class="code-line line-3"></div>
-                   <div class="code-line line-4"></div>
-                   <div class="code-line line-5"></div>
-                   <div class="screen-cursor"></div>
-                 </div>
+        <div class="hero-visual animate-float-slow">
+           <div class="scene-container">
+             <div class="center-nucleus">
+               <div class="nucleus-core"><mat-icon>school</mat-icon></div>
+               <div class="orbit orbit-1"></div>
+               <div class="orbit orbit-2"></div>
+               <div class="orbit orbit-3"></div>
+               
+               <div class="planet planet-1 glass">
+                 <mat-icon>code</mat-icon>
+                 <span>Code</span>
                </div>
-               <div class="laptop-base"></div>
-               <div class="laptop-shadow"></div>
+               
+               <div class="planet planet-2 glass">
+                 <mat-icon>smart_toy</mat-icon>
+                 <span>AI</span>
+               </div>
+               
+               <div class="planet planet-3 glass">
+                 <mat-icon>psychology</mat-icon>
+                 <span>Logic</span>
+               </div>
              </div>
-
-             <div class="floating-card card-1">
-               <mat-icon>code</mat-icon>
-               <span>Coding</span>
-             </div>
-             <div class="floating-card card-2">
-               <mat-icon>psychology</mat-icon>
-               <span>Logic</span>
-             </div>
-             <div class="floating-card card-3">
-               <mat-icon>star</mat-icon>
-               <span>4.9</span>
-             </div>
-             <div class="blob blob-1"></div>
-             <div class="blob blob-2"></div>
-          </div>
+           </div>
         </div>
       </header>
 
@@ -152,6 +153,90 @@ import { environment } from '../../../environments/environment';
             </div>
             <h3>{{ 'landing.feat4Title' | translate }}</h3>
             <p>{{ 'landing.feat4Desc' | translate }}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Workflow & Rules Section -->
+      <section id="workflow" class="workflow-section">
+        <div class="section-header">
+          <h2>{{ 'landing.workflowTitle' | translate }}</h2>
+          <p>{{ 'landing.workflowDesc' | translate }}</p>
+        </div>
+        
+        <div class="workflow-container">
+          <div class="steps-wrapper">
+            <div class="step-card glass">
+              <div class="step-number">01</div>
+              <div class="step-icon">
+                <mat-icon>menu_book</mat-icon>
+              </div>
+              <h3 class="step-title">{{ 'landing.step1Title' | translate }}</h3>
+              <p class="step-desc">{{ 'landing.step1Desc' | translate }}</p>
+            </div>
+            <div class="step-connector">
+              <mat-icon>keyboard_arrow_right</mat-icon>
+            </div>
+            <div class="step-card glass">
+              <div class="step-number">02</div>
+              <div class="step-icon">
+                <mat-icon>play_circle_filled</mat-icon>
+              </div>
+              <h3 class="step-title">{{ 'landing.step2Title' | translate }}</h3>
+              <p class="step-desc">{{ 'landing.step2Desc' | translate }}</p>
+            </div>
+            <div class="step-connector">
+              <mat-icon>keyboard_arrow_right</mat-icon>
+            </div>
+            <div class="step-card glass">
+              <div class="step-number">03</div>
+              <div class="step-icon">
+                <mat-icon>assignment</mat-icon>
+              </div>
+              <h3 class="step-title">{{ 'landing.step3Title' | translate }}</h3>
+              <p class="step-desc">{{ 'landing.step3Desc' | translate }}</p>
+            </div>
+            <div class="step-connector">
+              <mat-icon>keyboard_arrow_right</mat-icon>
+            </div>
+            <div class="step-card glass">
+              <div class="step-number">04</div>
+              <div class="step-icon">
+                <mat-icon>emoji_events</mat-icon>
+              </div>
+              <h3 class="step-title">{{ 'landing.step4Title' | translate }}</h3>
+              <p class="step-desc">{{ 'landing.step4Desc' | translate }}</p>
+            </div>
+          </div>
+
+          <div class="rules-card glass">
+            <div class="rules-left">
+              <div class="rules-icon-bg">
+                <mat-icon>gavel</mat-icon>
+              </div>
+              <div>
+                <h3>{{ 'landing.rulesTitle' | translate }}</h3>
+                <p>{{ 'landing.rulesDesc' | translate }}</p>
+              </div>
+            </div>
+            <div class="rules-right">
+              <div class="rule-item">
+                <mat-icon class="check-icon">verified</mat-icon>
+                <span>{{ 'landing.rule1' | translate }}</span>
+              </div>
+              <div class="rule-item">
+                <mat-icon class="check-icon">verified</mat-icon>
+                <span>{{ 'landing.rule2' | translate }}</span>
+              </div>
+              <div class="rule-item">
+                <mat-icon class="check-icon">verified</mat-icon>
+                <span>{{ 'landing.rule3' | translate }}</span>
+              </div>
+              <div class="rule-item">
+                <mat-icon class="check-icon">verified</mat-icon>
+                <span>{{ 'landing.rule4' | translate }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -333,27 +418,98 @@ import { environment } from '../../../environments/environment';
       max-width: 1280px;
       margin: 0 auto;
       gap: 48px;
+      position: relative;
+    }
+
+    .hero-bg {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      overflow: hidden;
+      z-index: -1;
+    }
+
+    .glow-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.5;
+      animation: float-slow 8s infinite alternate ease-in-out;
+    }
+
+    .primary-orb {
+      width: 400px;
+      height: 400px;
+      background: rgba(37, 99, 235, 0.4);
+      top: -100px;
+      right: -100px;
+    }
+
+    .secondary-orb {
+      width: 500px;
+      height: 500px;
+      background: rgba(139, 92, 246, 0.4);
+      bottom: -150px;
+      left: -150px;
+      animation-delay: -4s;
+    }
+
+    .grid-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-size: 40px 40px;
+      background-image: linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
+      mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
+      -webkit-mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
     }
 
     .hero-content {
-      flex: 1;
-      max-width: 600px;
+      flex: 1.2;
+      max-width: 650px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .tech-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(37, 99, 235, 0.2);
+      border-radius: 100px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--primary-700);
+      margin-bottom: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      backdrop-filter: blur(8px);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--primary-500);
+      border-radius: 50%;
+      box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+      animation: pulse-ring 2s infinite;
     }
 
     .hero-title {
-      font-size: 4rem;
+      font-size: 4.5rem;
       font-weight: 800;
-      line-height: 1.15;
+      line-height: 1.1;
       margin-bottom: 24px;
-      letter-spacing: -1px;
+      letter-spacing: -1.5px;
       color: var(--gray-900);
     }
 
-    .highlight {
-      background: linear-gradient(135deg, #2563eb, #8b5cf6);
+    .text-gradient {
+      background: linear-gradient(135deg, #2563eb, #7c3aed, #db2777);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      display: inline-block;
+      background-size: 200% auto;
+      animation: textGlow 4s linear infinite;
     }
 
     .hero-subtitle {
@@ -361,214 +517,422 @@ import { environment } from '../../../environments/environment';
       color: var(--gray-600);
       margin-bottom: 40px;
       line-height: 1.6;
+      max-width: 550px;
     }
 
     .hero-actions {
       display: flex;
-      gap: 16px;
+      gap: 20px;
       margin-bottom: 48px;
+      align-items: center;
     }
 
-    ::ng-deep .cta-btn {
-      padding: 28px 40px !important;
+    ::ng-deep .cta-btn.primary-glow {
+      padding: 28px 44px !important;
       font-size: 1.15rem !important;
       border-radius: 100px !important;
-      font-weight: 600 !important;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
-      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3) !important;
+      font-weight: 700 !important;
+      background: linear-gradient(135deg, #2563eb, #4f46e5) !important;
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4), inset 0 2px 0 rgba(255,255,255,0.2) !important;
       color: white !important;
-      transition: transform 0.2s, box-shadow 0.2s !important;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     }
-    ::ng-deep .cta-btn:hover {
-      transform: translateY(-2px) !important;
-      box-shadow: 0 15px 35px rgba(37, 99, 235, 0.4) !important;
+
+    ::ng-deep .cta-btn.primary-glow:hover {
+      transform: translateY(-4px) scale(1.02) !important;
+      box-shadow: 0 15px 35px rgba(37, 99, 235, 0.5), inset 0 2px 0 rgba(255,255,255,0.2) !important;
     }
 
     ::ng-deep .secondary-btn {
-      padding: 28px 32px !important;
+      padding: 28px 36px !important;
       font-size: 1.1rem !important;
       border-radius: 100px !important;
-      border: 2px solid var(--primary-600) !important;
-      color: var(--primary-600) !important;
+      border: 2px solid rgba(37, 99, 235, 0.2) !important;
+      background: rgba(255, 255, 255, 0.5) !important;
+      color: var(--gray-800) !important;
       font-weight: 600 !important;
+      backdrop-filter: blur(4px) !important;
+      transition: all 0.3s !important;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    ::ng-deep .secondary-btn:hover {
+      background: white !important;
+      border-color: var(--primary-500) !important;
+      transform: translateY(-2px) !important;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.05) !important;
+    }
+
+    .btn-text {
+      display: inline-block;
     }
 
     .stats-row {
       display: flex;
-      gap: 48px;
+      gap: 24px;
       padding-top: 32px;
-      border-top: 1px solid var(--gray-200);
+      border-top: 1px solid rgba(0,0,0,0.05);
     }
 
-    .stat-item {
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      padding: 16px 24px;
+      border-radius: 20px;
       display: flex;
       flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.03);
+      transition: transform 0.3s ease;
+    }
+
+    .glass-panel:hover {
+      transform: translateY(-4px);
     }
 
     .stat-value {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--primary-600);
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--gray-900);
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
+
+    .rating-val { color: #f59e0b; }
 
     .stat-label {
       font-size: 0.9rem;
       color: var(--gray-500);
+      font-weight: 500;
+      margin-top: 4px;
     }
 
-    /* Hero Image Area */
-    .hero-image {
+    /* Hero Visual */
+    .hero-visual {
       flex: 1;
-      position: relative;
       height: 600px;
       display: flex;
       align-items: center;
       justify-content: center;
+      perspective: 1000px;
     }
 
-    .blob {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(40px);
-      z-index: -1;
-    }
-
-    .blob-1 {
-      width: 300px;
-      height: 300px;
-      background: var(--primary-200);
-      top: 50px;
-      right: 50px;
-      animation: float 6s ease-in-out infinite;
-    }
-
-    .blob-2 {
-      width: 250px;
-      height: 250px;
-      background: var(--info-light);
-      bottom: 50px;
-      left: 50px;
-      animation: float 8s ease-in-out infinite;
-    }
-
-    .image-wrapper {
-      position: relative;
+    .scene-container {
       width: 100%;
       height: 100%;
-    }
-
-    .floating-card {
-      position: absolute;
-      background: white;
-      padding: 16px 24px;
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      position: relative;
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-weight: 600;
-      animation: float 4s ease-in-out infinite;
+      justify-content: center;
+      transform-style: preserve-3d;
+      animation: rotate-slow 20s infinite linear;
     }
 
-    .card-1 {
-      top: 20%;
-      right: 10%;
-      animation-delay: 0s;
-      mat-icon { color: var(--primary-500); }
-    }
-
-    .card-2 {
-      bottom: 20%;
-      left: 10%;
-      animation-delay: 2s;
-      mat-icon { color: var(--warning); }
-    }
-
-    .card-3 {
-      bottom: 35%;
-      right: 5%;
-      animation-delay: 1s;
-      mat-icon { color: #f59e0b; }
-    }
-
-    /* 3D Laptop */
-    .laptop-3d {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) perspective(800px) rotateY(-8deg) rotateX(5deg);
-      z-index: 1;
-    }
-
-    .laptop-screen {
-      width: 280px;
-      height: 190px;
-      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-      border-radius: 12px 12px 0 0;
-      border: 3px solid #334155;
-      padding: 20px;
+    .center-nucleus {
       position: relative;
-      overflow: hidden;
-      box-shadow: 0 -5px 30px rgba(59, 130, 246, 0.15);
+      width: 120px;
+      height: 120px;
+      transform-style: preserve-3d;
     }
 
-    .screen-content {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .code-line {
-      height: 8px;
-      border-radius: 4px;
-      animation: codeType 3s ease-in-out infinite;
-    }
-
-    .line-1 { width: 60%; background: #60a5fa; animation-delay: 0s; }
-    .line-2 { width: 80%; background: #34d399; animation-delay: 0.3s; }
-    .line-3 { width: 45%; background: #f472b6; animation-delay: 0.6s; }
-    .line-4 { width: 70%; background: #a78bfa; animation-delay: 0.9s; }
-    .line-5 { width: 55%; background: #fbbf24; animation-delay: 1.2s; }
-
-    .screen-cursor {
+    .nucleus-core {
       position: absolute;
-      bottom: 25px;
-      left: 20px;
-      width: 8px;
-      height: 16px;
-      background: #60a5fa;
-      border-radius: 2px;
-      animation: blink 1s step-end infinite;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 40px rgba(99, 102, 241, 0.6), inset 0 0 20px rgba(255,255,255,0.5);
+      z-index: 10;
+      color: white;
+      
+      mat-icon {
+        font-size: 56px;
+        width: 56px;
+        height: 56px;
+      }
     }
 
-    .laptop-base {
-      width: 320px;
-      height: 14px;
-      background: linear-gradient(to bottom, #94a3b8, #64748b);
-      border-radius: 0 0 8px 8px;
+    .orbit {
+      position: absolute;
+      top: 50%; left: 50%;
+      border: 1px dashed rgba(37, 99, 235, 0.3);
+      border-radius: 50%;
+      transform: translate(-50%, -50%) rotateX(60deg);
+      transform-style: preserve-3d;
+      pointer-events: none;
+    }
+
+    .orbit-1 { width: 250px; height: 250px; animation: spin-forward 10s linear infinite; }
+    .orbit-2 { width: 380px; height: 380px; animation: spin-backward 15s linear infinite; border-color: rgba(139, 92, 246, 0.3); }
+    .orbit-3 { width: 500px; height: 500px; animation: spin-forward 25s linear infinite; border-color: rgba(236, 72, 153, 0.2); }
+
+    .planet {
+      position: absolute;
+      padding: 12px 20px;
+      border-radius: 100px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--gray-800);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      transform-style: preserve-3d;
+    }
+
+    .planet-1 { 
+      top: 0; left: 50%; 
+      transform: translate(-50%, -50%) rotateX(-60deg); 
+      background: rgba(255,255,255,0.9);
+      color: #2563eb;
+    }
+    
+    .planet-2 { 
+      bottom: 10%; right: -10%; 
+      transform: translate(50%, 50%) rotateX(-60deg); 
+      background: rgba(255,255,255,0.9);
+      color: #7c3aed;
+    }
+    
+    .planet-3 { 
+      top: 30%; left: -20%; 
+      transform: translate(-50%, -50%) rotateX(-60deg); 
+      background: rgba(255,255,255,0.9);
+      color: #db2777;
+    }
+
+    /* Animations */
+    @keyframes float-slow {
+      0% { transform: translateY(0) scale(1); }
+      100% { transform: translateY(-30px) scale(1.05); }
+    }
+    
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+    }
+
+    @keyframes textGlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    @keyframes rotate-slow {
+      from { transform: rotateY(0deg); }
+      to { transform: rotateY(360deg); }
+    }
+
+    @keyframes spin-forward {
+      from { transform: translate(-50%, -50%) rotateX(60deg) rotateZ(0deg); }
+      to { transform: translate(-50%, -50%) rotateX(60deg) rotateZ(360deg); }
+    }
+
+    @keyframes spin-backward {
+      from { transform: translate(-50%, -50%) rotateX(60deg) rotateZ(360deg); }
+      to { transform: translate(-50%, -50%) rotateX(60deg) rotateZ(0deg); }
+    }
+
+    .animate-fade-in { animation: fadeIn 0.8s ease-out forwards; opacity: 0; }
+    .animate-slide-up { animation: slideUp 0.8s ease-out forwards; opacity: 0; transform: translateY(30px); }
+    .animate-slide-up-delay { animation: slideUp 0.8s ease-out 0.2s forwards; opacity: 0; transform: translateY(30px); }
+    .animate-slide-up-delay-2 { animation: slideUp 0.8s ease-out 0.4s forwards; opacity: 0; transform: translateY(30px); }
+    .animate-slide-up-delay-3 { animation: slideUp 0.8s ease-out 0.6s forwards; opacity: 0; transform: translateY(30px); }
+    .animate-float-slow { animation: float-slow 4s ease-in-out infinite alternate; }
+
+    @keyframes fadeIn { to { opacity: 1; } }
+    @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+
+    /* Workflow & Rules Section */
+    .workflow-section {
+      padding: 100px 24px;
+      max-width: 1280px;
       margin: 0 auto;
       position: relative;
-      left: -20px;
     }
 
-    .laptop-shadow {
-      width: 300px;
-      height: 20px;
-      background: radial-gradient(ellipse, rgba(0,0,0,0.15) 0%, transparent 70%);
-      margin: 8px auto 0;
+    .workflow-container {
+      display: flex;
+      flex-direction: column;
+      gap: 64px;
+    }
+
+    .steps-wrapper {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
       position: relative;
-      left: -10px;
     }
 
-    @keyframes codeType {
-      0%, 100% { opacity: 0.6; }
-      50% { opacity: 1; }
+    .step-card {
+      flex: 1;
+      padding: 32px 24px;
+      border-radius: 24px;
+      text-align: center;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all 0.3s;
+      z-index: 2;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+    }
+    
+    .step-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.06);
+      background: white;
     }
 
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
+    .step-number {
+      position: absolute;
+      top: -15px;
+      left: 20px;
+      font-size: 3rem;
+      font-weight: 900;
+      color: rgba(37, 99, 235, 0.1);
+      line-height: 1;
     }
+
+    .step-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #eff6ff, #dbeafe);
+      color: var(--primary-600);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 16px rgba(37, 99, 235, 0.1);
+      
+      mat-icon {
+        font-size: 36px;
+        width: 36px;
+        height: 36px;
+      }
+    }
+
+    .step-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 12px;
+    }
+
+    .step-desc {
+      font-size: 0.95rem;
+      color: var(--gray-600);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .step-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 140px;
+      color: var(--gray-300);
+      
+      mat-icon {
+        font-size: 40px;
+        width: 40px;
+        height: 40px;
+      }
+    }
+
+    .rules-card {
+      display: flex;
+      background: white;
+      border-radius: 32px;
+      padding: 48px;
+      gap: 48px;
+      align-items: center;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.03);
+    }
+
+    .rules-left {
+      flex: 1;
+      display: flex;
+      gap: 24px;
+      
+      h3 {
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+        color: var(--gray-900);
+      }
+      
+      p {
+        color: var(--gray-600);
+        font-size: 1.1rem;
+        line-height: 1.6;
+      }
+    }
+
+    .rules-icon-bg {
+      width: 80px;
+      height: 80px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, #fef2f2, #fee2e2);
+      color: #ef4444;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      
+      mat-icon {
+        font-size: 40px;
+        width: 40px;
+        height: 40px;
+      }
+    }
+
+    .rules-right {
+      flex: 1.5;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .rule-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 20px;
+      border-radius: 16px;
+      background: var(--gray-50);
+      border: 1px solid var(--gray-100);
+      transition: all 0.2s;
+      
+      &:hover {
+        background: white;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.02);
+        border-color: var(--primary-100);
+        transform: translateY(-2px);
+      }
+      
+      span {
+        font-weight: 600;
+        color: var(--gray-800);
+        line-height: 1.4;
+      }
+    }
+
+    .check-icon {
+      color: var(--success);
+      flex-shrink: 0;
+    }
+
 
     /* Features Section */
     .features-section {

@@ -61,7 +61,7 @@ import { LanguageService } from '../../../core/services/language.service';
               <ng-container matColumnDef="title">
                 <th mat-header-cell *matHeaderCellDef>{{ 'common.title' | translate }}</th>
                 <td mat-cell *matCellDef="let mod">
-                  <div class="module-cell">
+                  <div class="module-cell module-cell-link" (click)="router.navigate(['/modules', mod.id, 'lessons'])">
                     <div class="module-thumbnail" [style.background-image]="mod.thumbnail ? 'url(' + mod.thumbnail + ')' : ''">
                       @if (!mod.thumbnail) {
                         <mat-icon>library_books</mat-icon>
@@ -292,6 +292,14 @@ import { LanguageService } from '../../../core/services/language.service';
       display: flex;
       align-items: center;
       gap: 16px;
+    }
+
+    .module-cell-link {
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      transition: background 0.15s;
+      &:hover { background: var(--primary-50); }
+      &:hover .module-title { color: var(--primary-600); text-decoration: underline; }
     }
 
     .module-thumbnail {

@@ -214,9 +214,7 @@ interface AiFeedback {
                       [rows]="getQuestionType(q) === 'essay' ? 6 : 4"
                       [value]="getAnswer(q.id) || ''"
                       (input)="setAnswer(q.id, $any($event.target).value)"
-                      [placeholder]="isImageUrl(q.question_text)
-                        ? 'Masalan: Bu qurilma sistema bloki bo\'lib, kompyuterning asosiy qismidir...'
-                        : 'Javobingizni yozing...'">
+                      [placeholder]="getTextareaPlaceholder(q)">
                     </textarea>
                     @if (isImageUrl(q.question_text)) {
                       <div class="ai-badge">
@@ -761,6 +759,12 @@ export class StudentAssignmentComponent implements OnInit {
       lower.startsWith('/static/') ||
       /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/.test(lower)
     );
+  }
+
+  getTextareaPlaceholder(q: AssignmentQuestion): string {
+    return this.isImageUrl(q.question_text)
+      ? "Masalan: Bu qurilma sistema bloki bo'lib, kompyuterning asosiy qismidir..."
+      : 'Javobingizni yozing...';
   }
 
   safe(html: string): SafeHtml {

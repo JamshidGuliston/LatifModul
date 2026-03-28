@@ -92,6 +92,23 @@ export const en: Record<string, string> = {
   'landing.social': 'Social Media',
   'landing.rights': 'All rights reserved.',
 
+  'landing.workflowTitle': 'How does the learning process work?',
+  'landing.workflowDesc': 'A simple and effective way to learn and complete tasks on the platform',
+  'landing.step1Title': '1. Choose a Module',
+  'landing.step1Desc': 'Select a module that interests you and enroll in the lessons.',
+  'landing.step2Title': '2. Watch Video Lessons',
+  'landing.step2Desc': 'Carefully study high-quality video lessons that provide practical and modern knowledge.',
+  'landing.step3Title': '3. Complete Assignments',
+  'landing.step3Desc': 'Complete practical tasks and tests given to reinforce the covered topics.',
+  'landing.step4Title': '4. Get a Certificate',
+  'landing.step4Desc': 'Successfully complete all stages and get a certificate confirming your expertise.',
+  'landing.rulesTitle': 'Rules for Completing Tasks',
+  'landing.rulesDesc': 'Achieve high results by completing tasks on time and with high quality.',
+  'landing.rule1': 'Do not miss the given deadline',
+  'landing.rule2': 'Answer all test questions',
+  'landing.rule3': 'Write practical code completely and without errors',
+  'landing.rule4': 'Do not plagiarize',
+
   // Student Modules
   'studentModules.title': 'Modules',
   'studentModules.subtitle': 'All learning modules from the teacher',

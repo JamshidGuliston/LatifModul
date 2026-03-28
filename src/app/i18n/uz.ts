@@ -92,6 +92,23 @@ export const uz: Record<string, string> = {
   'landing.social': 'Ijtimoiy tarmoqlar',
   'landing.rights': 'Barcha huquqlar himoyalangan.',
 
+  'landing.workflowTitle': 'O\'qish jarayoni qanday ishlaydi?',
+  'landing.workflowDesc': 'Platformada ta\'lim olish va topshiriqlarni bajarishning oddiy va samarali usuli',
+  'landing.step1Title': '1. Modulni tanlash',
+  'landing.step1Desc': 'O\'zingizga mos bo\'lgan va qiziqtirgan modulni tanlab, darslarga yoziling.',
+  'landing.step2Title': '2. Video darslarni ko\'rish',
+  'landing.step2Desc': 'Amaliy va zamonaviy bilimlarni beruvchi sifatli video darslarni diqqat bilan o\'rganing.',
+  'landing.step3Title': '3. Topshiriqlarni bajarish',
+  'landing.step3Desc': 'O\'tilgan mavzularni mustahkamlash uchun berilgan amaliy vazifa va testlarni ishlash.',
+  'landing.step4Title': '4. Sertifikat olish',
+  'landing.step4Desc': 'Barcha bosqichlarni muvaffaqiyatli yakunlab, mutaxassislikni tasdiqlovchi sertifikatga ega bo\'lish.',
+  'landing.rulesTitle': 'Topshiriq bajarish qoidalari',
+  'landing.rulesDesc': 'Vazifalarni o\'z vaqtida va sifatli bajarish orqali yuqori natijalarga erishing.',
+  'landing.rule1': 'Belgilangan muhlatdan (deadline) kechikmaslik',
+  'landing.rule2': 'Barcha test savollariga javob berish',
+  'landing.rule3': 'Amaliy kodlarni to\'liq va xatosiz ishlash',
+  'landing.rule4': 'Ko\'chirmachilikka (plagiat) yo\'l qo\'ymaslik',
+
   // Student Modules
   'studentModules.title': 'Modullar',
   'studentModules.subtitle': 'O\'qituvchining barcha o\'quv modullari',
