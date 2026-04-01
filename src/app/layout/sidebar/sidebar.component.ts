@@ -82,6 +82,22 @@ import { TeacherService } from '../../core/services/teacher.service';
             <span class="ni-text">{{ 'nav.progress' | translate }}</span>
             <div class="ni-dot"></div>
           </a>
+
+          <a class="nav-item" routerLink="/results" routerLinkActive="active">
+            <div class="ni-icon">
+              <mat-icon>grading</mat-icon>
+            </div>
+            <span class="ni-text">Natijalar</span>
+            <div class="ni-dot"></div>
+          </a>
+
+          <a class="nav-item" routerLink="/reports" routerLinkActive="active">
+            <div class="ni-icon">
+              <mat-icon>analytics</mat-icon>
+            </div>
+            <span class="ni-text">Hisobotlar</span>
+            <div class="ni-dot"></div>
+          </a>
         </nav>
       </div>
 

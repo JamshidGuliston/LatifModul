@@ -72,6 +72,50 @@ export class GeminiService {
     }
 
     /**
+     * Matnli qisqa javobni AI orqali baholaydi.
+     */
+    async gradeShortTextAnswer(
+        questionText: string,
+        correctAnswer: string,
+        studentAnswer: string,
+        maxPoints: number = 5
+    ): Promise<{ score: number; feedback: string }> {
+        try {
+            const model = this.genAI.getGenerativeModel({ model: this.MODEL_NAME });
+            const prompt = `Sen o'zbek tili bo'yicha imtihon tekshiruvchisisisan.
+Savol: "${questionText}"
+To'g'ri javob (etalon): "${correctAnswer || '(ko\'rsatilmagan)'}"
+Talabaning javobi: "${studentAnswer}"
+Maksimal ball: ${maxPoints}
+
+Talabaning javobini baholang:
+- Javob to'g'ri va to'liqmi?
+- Asosiy mazmun mos keladimi?
+- O'zbek tili to'g'ri ishlatilganmi?
+
+Javobni FAQAT quyidagi JSON formatda ber (boshqa hech narsa yozma):
+{"score": <0 dan ${maxPoints} gacha son>, "feedback": "<o'zbek tilida 1-2 gap izoh>"}`;
+
+            const result = await model.generateContent(prompt);
+            const text = result.response.text().trim();
+            console.log('[GeminiService] Short text grade raw:', text);
+            const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+            const match = cleaned.match(/\{[\s\S]*\}/);
+            if (match) {
+                const parsed = JSON.parse(match[0]);
+                return {
+                    score: Math.min(Math.max(Number(parsed.score) || 0, 0), maxPoints),
+                    feedback: parsed.feedback || ''
+                };
+            }
+            return { score: 0, feedback: text };
+        } catch (err: any) {
+            console.error('[GeminiService] Text grading error:', err?.message || err);
+            return { score: 0, feedback: 'AI tekshirishda xatolik yuz berdi.' };
+        }
+    }
+
+    /**
      * Rasmni yuklab base64 ga o'giradi
      */
     private async fetchImageAsBase64(url: string): Promise<{ data: string; mimeType: string }> {

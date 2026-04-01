@@ -263,11 +263,9 @@ interface AiFeedback {
                       (input)="setAnswer(q.id, $any($event.target).value, 600)"
                       [placeholder]="getTextareaPlaceholder(q)">
                     </textarea>
-                    @if (isImageUrl(q.question_text)) {
-                      <div class="ai-badge">
-                        <mat-icon>auto_awesome</mat-icon> AI tomonidan tekshiriladi
-                      </div>
-                    }
+                    <div class="ai-badge">
+                      <mat-icon>auto_awesome</mat-icon> AI tomonidan tekshiriladi
+                    </div>
                   }
 
                 </div>
@@ -332,7 +330,11 @@ interface AiFeedback {
                   @if (aiFeedbacks().get(q.id); as fb) {
                     <div class="ai-fb-item">
                       <div class="ai-fb-header">
-                        <img [src]="q.question_text" alt="qurilma" class="ai-fb-img">
+                        @if (isImageUrl(q.question_text)) {
+                          <img [src]="q.question_text" alt="qurilma" class="ai-fb-img">
+                        } @else {
+                          <div class="ai-fb-question" [innerHTML]="safe(q.question_text)"></div>
+                        }
                         <div class="ai-fb-score">
                           <span class="fb-pts">{{ fb.score }}</span>
                           <span class="fb-max">/ {{ q.points }} ball</span>
@@ -599,6 +601,11 @@ interface AiFeedback {
       mat-icon { font-size: 18px; width: 18px; height: 18px; }
       &:hover { background: #e2e8f0; }
     }
+    .ai-fb-question {
+      flex: 1; font-size: 0.88rem; color: #1e293b; font-weight: 500;
+      line-height: 1.5; max-height: 60px; overflow: hidden;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    }
   `]
 })
 export class StudentAssignmentComponent implements OnInit {
@@ -624,9 +631,10 @@ export class StudentAssignmentComponent implements OnInit {
   gradingProgress = signal('');
 
   aiGradedQuestions = computed(() =>
-    this.questions().filter(q =>
-      this.getQuestionType(q) === 'short_answer' && this.isImageUrl(q.question_text)
-    )
+    this.questions().filter(q => {
+      const type = this.getQuestionType(q);
+      return type === 'short_answer' || type === 'essay';
+    })
   );
 
   private moduleId = '';
@@ -779,21 +787,39 @@ export class StudentAssignmentComponent implements OnInit {
       const q = toGrade[i];
       this.gradingProgress.set(`${i + 1} / ${toGrade.length} tekshirilmoqda...`);
       const answer = this.answersMap.get(q.id) || '';
-      if (answer) {
-        const fb = await this.geminiService.gradeImageAnswer(q.question_text, answer, q.points);
-        console.log(`[gradeWithAI] q=${q.id} score=${fb.score}/${q.points} feedback=${fb.feedback}`);
-        aiTotal += fb.score;
-        this.aiFeedbacks.update(m => { const nm = new Map(m); nm.set(q.id, fb); return nm; });
+      if (!answer) continue;
+
+      let fb: { score: number; feedback: string };
+      if (this.isImageUrl(q.question_text)) {
+        fb = await this.geminiService.gradeImageAnswer(q.question_text, answer, q.points);
+      } else {
+        const correctAnswer = q.correct_answer != null
+          ? (typeof q.correct_answer === 'string' ? q.correct_answer : JSON.stringify(q.correct_answer))
+          : '';
+        fb = await this.geminiService.gradeShortTextAnswer(q.question_text, correctAnswer, answer, q.points);
+      }
+
+      console.log(`[gradeWithAI] q=${q.id} score=${fb.score}/${q.points}`);
+      aiTotal += fb.score;
+      this.aiFeedbacks.update(m => { const nm = new Map(m); nm.set(q.id, fb); return nm; });
+
+      // Save per-question feedback to backend
+      const answerId = this.savedAnswerIds.get(q.id);
+      if (answerId) {
+        this.progressService.patchAnswer(answerId, {
+          points_earned: fb.score,
+          feedback: fb.feedback,
+          is_correct: fb.score >= q.points * 0.5,
+        }).pipe(catchError(() => of(null))).subscribe();
       }
     }
 
-    // Backend scorega AI scoreni qo'shib yangilash
+    // Update attempt total score
     const att = this.attempt();
     if (att && aiTotal > 0) {
       const newScore = (att.score ?? 0) + aiTotal;
       const newMax = att.max_score ?? 0;
       const newPct = newMax > 0 ? Math.round((newScore / newMax) * 100) : 0;
-      // Avval lokalda yangilaymiz, keyin backendga yuboramiz
       this.attempt.update(a => a ? { ...a, score: newScore, percentage: newPct } : a);
       this.progressService.patchAttempt(att.id, { score: newScore, percentage: newPct })
         .pipe(catchError(() => of(null)))

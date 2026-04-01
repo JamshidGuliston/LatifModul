@@ -40,6 +40,8 @@ export const routes: Routes = [
             { path: 'assignments', loadChildren: () => import('./pages/assignments/assignment.routes').then(m => m.ASSIGNMENT_ROUTES) },
             { path: 'students', loadChildren: () => import('./pages/students/student.routes').then(m => m.STUDENT_ROUTES) },
             { path: 'questions', loadChildren: () => import('./pages/questions/question.routes').then(m => m.QUESTION_ROUTES) },
+            { path: 'results', loadComponent: () => import('./pages/results/results.component').then(m => m.ResultsComponent) },
+            { path: 'reports', loadComponent: () => import('./pages/reports/reports.component').then(m => m.ReportsComponent) },
         ]
     }
 ];
