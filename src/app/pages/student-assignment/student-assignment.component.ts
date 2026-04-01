@@ -83,24 +83,50 @@ interface AiFeedback {
                   <span>{{ assignment()!.time_limit }} daqiqa</span>
                 </div>
               }
-              <div class="meta-item">
+              <div class="meta-item" [class.remaining-green]="remainingAttempts() >= 3"
+                                     [class.remaining-yellow]="remainingAttempts() > 0 && remainingAttempts() < 3"
+                                     [class.remaining-red]="remainingAttempts() === 0">
                 <mat-icon>repeat</mat-icon>
-                <span>{{ assignment()!.attempts_allowed }} urinish</span>
+                <span>Qolgan urinishlar: {{ remainingAttempts() }} / {{ assignment()!.attempts_allowed }}</span>
               </div>
             </div>
 
-            @if (existingAttempt()) {
-              <div class="prev-result"
-                [class.passed]="existingAttempt()!.is_passed === true"
-                [class.failed]="existingAttempt()!.is_passed === false">
-                <mat-icon>{{ existingAttempt()!.is_passed ? 'check_circle' : 'cancel' }}</mat-icon>
-                <span>Oldingi natija: {{ existingAttempt()!.score ?? 0 }} / {{ existingAttempt()!.max_score }} ball</span>
+            @if (allAttempts().length > 0) {
+              <div class="attempts-table-wrap">
+                <table class="attempts-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Sana</th>
+                      <th>Ball</th>
+                      <th>Foiz</th>
+                      <th>Natija</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (att of allAttempts(); track att.id; let i = $index) {
+                      <tr>
+                        <td>{{ i + 1 }}</td>
+                        <td>{{ formatDate(att.submitted_at) }}</td>
+                        <td>{{ att.score ?? 0 }} / {{ att.max_score }}</td>
+                        <td>{{ att.percentage ?? 0 }}%</td>
+                        <td>
+                          @if (att.is_passed === true) {
+                            <span class="badge badge-pass">✓ O'tdi</span>
+                          } @else {
+                            <span class="badge badge-fail">✗ O'tmadi</span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
               </div>
             }
 
-            <button class="btn-start" (click)="startAttempt()">
+            <button class="btn-start" (click)="startAttempt()" [disabled]="!canStart()">
               <mat-icon>play_arrow</mat-icon>
-              {{ existingAttempt() ? 'Qayta boshlash' : 'Boshlash' }}
+              {{ allAttempts().length > 0 ? 'Qayta boshlash' : 'Boshlash' }}
             </button>
           </div>
         }
@@ -425,14 +451,6 @@ interface AiFeedback {
       padding: 8px 14px; font-size: 0.85rem; font-weight: 600; color: #475569;
       mat-icon { font-size: 18px; width: 18px; height: 18px; color: #6366f1; }
     }
-    .prev-result {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 12px 20px; border-radius: 12px; margin-bottom: 20px;
-      font-size: 0.9rem; font-weight: 600; background: #f8fafc; color: #64748b;
-      mat-icon { font-size: 20px; width: 20px; height: 20px; }
-      &.passed { background: #f0fdf4; color: #15803d; mat-icon { color: #22c55e; } }
-      &.failed { background: #fff1f2; color: #dc2626; mat-icon { color: #ef4444; } }
-    }
     .btn-start {
       display: inline-flex; align-items: center; gap: 8px;
       padding: 14px 36px; background: linear-gradient(135deg, #6366f1, #8b5cf6);
@@ -606,6 +624,46 @@ interface AiFeedback {
       line-height: 1.5; max-height: 60px; overflow: hidden;
       display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
     }
+
+.remaining-green span { color: #16a34a; font-weight: 600; }
+.remaining-yellow span { color: #ca8a04; font-weight: 600; }
+.remaining-red span { color: #dc2626; font-weight: 600; }
+
+.attempts-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin: 16px 0;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+.attempts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.attempts-table th {
+  background: #f8fafc;
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}
+.attempts-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+}
+.attempts-table tr:last-child td { border-bottom: none; }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-pass { background: #dcfce7; color: #16a34a; }
+.badge-fail { background: #fee2e2; color: #dc2626; }
   `]
 })
 export class StudentAssignmentComponent implements OnInit {
@@ -621,7 +679,12 @@ export class StudentAssignmentComponent implements OnInit {
   assignment = signal<AssignmentDetail | null>(null);
   questions = signal<AssignmentQuestion[]>([]);
   attempt = signal<AssignmentAttempt | null>(null);
-  existingAttempt = signal<AssignmentAttempt | null>(null);
+  allAttempts = signal<AssignmentAttempt[]>([]);
+  usedAttempts = computed(() => this.allAttempts().length);
+  remainingAttempts = computed(() =>
+    Math.max(0, (this.assignment()?.attempts_allowed ?? 0) - this.usedAttempts())
+  );
+  canStart = computed(() => this.remainingAttempts() > 0);
 
   private answersMap = new Map<string, any>();
   private savedAnswerIds = new Map<string, string>(); // questionId → answerId
@@ -668,12 +731,7 @@ export class StudentAssignmentComponent implements OnInit {
           this.progressService.getAttempts({ assignment_id: a.id, student_id: student.id }).subscribe({
             next: (attempts) => {
               const submitted = attempts.filter(at => at.submitted_at);
-              if (submitted.length) {
-                const best = submitted.reduce((b, c) =>
-                  (c.percentage ?? 0) > (b.percentage ?? 0) ? c : b
-                );
-                this.existingAttempt.set(best);
-              }
+              this.allAttempts.set(submitted);
               this.phase.set('intro');
             },
             error: () => this.phase.set('intro'),
@@ -687,6 +745,10 @@ export class StudentAssignmentComponent implements OnInit {
   }
 
   startAttempt() {
+    if (!this.canStart()) {
+      alert('Urinishlar soni tugadi!');
+      return;
+    }
     const student = this.studentService.getCurrentStudent();
     const a = this.assignment();
     if (!student || !a) return;
@@ -807,7 +869,7 @@ export class StudentAssignmentComponent implements OnInit {
       const answerId = this.savedAnswerIds.get(q.id);
       if (answerId) {
         this.progressService.patchAnswer(answerId, {
-          points_earned: fb.score,
+          points_earned: Math.round(fb.score),
           feedback: fb.feedback,
           is_correct: fb.score >= q.points * 0.5,
         }).pipe(catchError(() => of(null))).subscribe();
@@ -817,7 +879,7 @@ export class StudentAssignmentComponent implements OnInit {
     // Update attempt total score
     const att = this.attempt();
     if (att && aiTotal > 0) {
-      const newScore = (att.score ?? 0) + aiTotal;
+      const newScore = Math.round((att.score ?? 0) + aiTotal);
       const newMax = att.max_score ?? 0;
       const newPct = newMax > 0 ? Math.round((newScore / newMax) * 100) : 0;
       this.attempt.update(a => a ? { ...a, score: newScore, percentage: newPct } : a);
@@ -829,6 +891,12 @@ export class StudentAssignmentComponent implements OnInit {
     }
 
     this.phase.set('result');
+  }
+
+  formatDate(dateStr?: string): string {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
   goBack() {
