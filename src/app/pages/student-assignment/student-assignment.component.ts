@@ -10,9 +10,24 @@ import { ProgressService } from '../../core/services/progress.service';
 import { StudentService } from '../../core/services/student.service';
 import { GeminiService } from '../../core/services/gemini.service';
 import { AssignmentDetail, AssignmentQuestion } from '../../core/models/assignment.model';
-import { AssignmentAttempt } from '../../core/models/progress.model';
+import { AssignmentAttempt, QuestionAnswer } from '../../core/models/progress.model';
 
-type Phase = 'loading' | 'intro' | 'doing' | 'submitting' | 'grading' | 'result';
+type Phase = 'loading' | 'intro' | 'doing' | 'submitting' | 'grading' | 'result' | 'review';
+
+interface PlacedWord {
+  number: number;
+  direction: 'across' | 'down';
+  text: string;
+  answer: string;
+  row: number;
+  col: number;
+}
+
+interface CellData {
+  correct: string;
+  number?: number;
+  wordKeys: string[];
+}
 
 interface AiFeedback {
   score: number;
@@ -101,6 +116,7 @@ interface AiFeedback {
                       <th>Ball</th>
                       <th>Foiz</th>
                       <th>Natija</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -116,6 +132,9 @@ interface AiFeedback {
                           } @else {
                             <span class="badge badge-fail">✗ O'tmadi</span>
                           }
+                        </td>
+                        <td>
+                          <button class="btn-view" (click)="viewAttempt(att.id)">Ko'rish</button>
                         </td>
                       </tr>
                     }
@@ -225,50 +244,67 @@ interface AiFeedback {
                     </div>
                   }
 
-                  <!-- Crossword -->
+                  <!-- Crossword Grid -->
                   @if (getQuestionType(q) === 'crossword') {
                     <div class="cw-wrap">
-                      @if (q.question_data?.grid_image) {
-                        <img [src]="q.question_data.grid_image" alt="krossvord" class="cw-grid-img">
-                      }
-                      @if (q.question_data?.clues?.length) {
-                        <div class="cw-cols">
-                          <!-- Across -->
-                          @if (getCrosswordClues(q, 'across').length > 0) {
-                            <div class="cw-col">
-                              <div class="cw-col-title">→ Gorizontal</div>
-                              @for (clue of getCrosswordClues(q, 'across'); track clue.number) {
-                                <div class="cw-clue-item">
-                                  <span class="cw-num">{{ clue.number }}</span>
-                                  <span class="cw-hint">{{ clue.text }}</span>
-                                  <input class="cw-input"
-                                    type="text"
-                                    [value]="getCrosswordAnswer(q.id, clue.number, 'across')"
-                                    (input)="setCrosswordAnswer(q.id, clue.number, 'across', $any($event.target).value)"
-                                    placeholder="Javob...">
+                      <!-- Grid -->
+                      <div class="cw-grid-outer">
+                        @for (row of getCrosswordGrid(q).rows; track row) {
+                          <div class="cw-row">
+                            @for (col of getCrosswordGrid(q).cols; track col) {
+                              @if (getCellData(q, row, col); as cell) {
+                                <div class="cw-cell"
+                                  [class.cw-cell-correct]="getCellStatus(q.id, row, col) === 'correct'"
+                                  [class.cw-cell-wrong]="getCellStatus(q.id, row, col) === 'wrong'"
+                                  [class.cw-cell-empty]="getCellStatus(q.id, row, col) === 'empty'">
+                                  @if (cell.number) {
+                                    <span class="cw-cell-num">{{ cell.number }}</span>
+                                  }
+                                  <input
+                                    class="cw-cell-input"
+                                    maxlength="1"
+                                    [id]="'cw_' + q.id + '_' + row + '_' + col"
+                                    [value]="getCellValue(q.id, row, col)"
+                                    (keydown)="onCwKeydown($event, q, row, col)"
+                                    (input)="onCwInput($event, q, row, col)">
                                 </div>
+                              } @else {
+                                <div class="cw-cell cw-cell-empty-space"></div>
                               }
-                            </div>
-                          }
-                          <!-- Down -->
-                          @if (getCrosswordClues(q, 'down').length > 0) {
-                            <div class="cw-col">
-                              <div class="cw-col-title">↓ Vertikal</div>
-                              @for (clue of getCrosswordClues(q, 'down'); track clue.number) {
-                                <div class="cw-clue-item">
-                                  <span class="cw-num">{{ clue.number }}</span>
-                                  <span class="cw-hint">{{ clue.text }}</span>
-                                  <input class="cw-input"
-                                    type="text"
-                                    [value]="getCrosswordAnswer(q.id, clue.number, 'down')"
-                                    (input)="setCrosswordAnswer(q.id, clue.number, 'down', $any($event.target).value)"
-                                    placeholder="Javob...">
-                                </div>
-                              }
-                            </div>
-                          }
-                        </div>
-                      }
+                            }
+                          </div>
+                        }
+                      </div>
+                      <!-- Clues list -->
+                      <div class="cw-clues-section">
+                        @if (getCrosswordClues(q, 'across').length > 0) {
+                          <div class="cw-clues-group">
+                            <div class="cw-clues-title">→ Gorizontal</div>
+                            @for (clue of getCrosswordClues(q, 'across'); track clue.number) {
+                              <div class="cw-clue-row-item">
+                                <span class="cw-clue-num">{{ clue.number }}.</span>
+                                <span class="cw-clue-text">{{ clue.text }}</span>
+                              </div>
+                            }
+                          </div>
+                        }
+                        @if (getCrosswordClues(q, 'down').length > 0) {
+                          <div class="cw-clues-group">
+                            <div class="cw-clues-title">↓ Vertikal</div>
+                            @for (clue of getCrosswordClues(q, 'down'); track clue.number) {
+                              <div class="cw-clue-row-item">
+                                <span class="cw-clue-num">{{ clue.number }}.</span>
+                                <span class="cw-clue-text">{{ clue.text }}</span>
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                      <!-- Check button -->
+                      <button class="cw-check-btn" (click)="checkCrossword(q)">
+                        <mat-icon>check_circle</mat-icon>
+                        Tekshirish
+                      </button>
                     </div>
                   }
 
@@ -382,6 +418,73 @@ interface AiFeedback {
                 Darsga qaytish
               </button>
             </div>
+          </div>
+        }
+
+        <!-- REVIEW -->
+        @if (phase() === 'review' && reviewAttempt()) {
+          <div class="review-wrap">
+            <div class="review-header">
+              <h2>Urinish ko'rib chiqish</h2>
+              <div class="review-meta">
+                <span>Ball: <strong>{{ reviewAttempt()!.score ?? 0 }} / {{ reviewAttempt()!.max_score }}</strong></span>
+                <span>Foiz: <strong>{{ reviewAttempt()!.percentage ?? 0 }}%</strong></span>
+              </div>
+            </div>
+
+            @for (q of questions(); track q.id; let qi = $index) {
+              @let ans = getReviewAnswer(q.id);
+              <div class="review-q-card">
+                <div class="review-q-header">
+                  <span class="review-q-num">{{ qi + 1 }}</span>
+                  <div class="review-q-text" [innerHTML]="safe(q.question_text)"></div>
+                  <span class="review-q-pts">{{ ans?.points_earned ?? 0 }}/{{ q.points }} ball</span>
+                </div>
+
+                @if (getQuestionType(q) === 'crossword') {
+                  <div class="cw-wrap">
+                    <div class="cw-grid-outer">
+                      @for (row of getCrosswordGrid(q).rows; track row) {
+                        <div class="cw-row">
+                          @for (col of getCrosswordGrid(q).cols; track col) {
+                            @if (getCellData(q, row, col); as cell) {
+                              @let userCells = ans?.answer_data?.cells || {};
+                              @let userLetter = (userCells[row + '_' + col] || '').toUpperCase();
+                              <div class="cw-cell"
+                                [class.cw-cell-correct]="userLetter === cell.correct"
+                                [class.cw-cell-wrong]="userLetter && userLetter !== cell.correct"
+                                [class.cw-cell-empty]="!userLetter">
+                                @if (cell.number) {
+                                  <span class="cw-cell-num">{{ cell.number }}</span>
+                                }
+                                <div class="cw-cell-review-letter">{{ userLetter || '?' }}</div>
+                              </div>
+                            } @else {
+                              <div class="cw-cell cw-cell-empty-space"></div>
+                            }
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                } @else {
+                  <div class="review-answer-row">
+                    <div class="review-student-ans">
+                      <span class="review-label">Javob:</span>
+                      <span>{{ ans?.answer_data?.text || ans?.answer_data?.selected ?? '—' }}</span>
+                    </div>
+                    @if (ans?.feedback) {
+                      <div class="review-feedback">{{ ans?.feedback }}</div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <button class="btn-back" (click)="phase.set('intro')">
+              <mat-icon>arrow_back</mat-icon>
+              Orqaga
+            </button>
           </div>
         }
 
@@ -547,31 +650,6 @@ interface AiFeedback {
       &:focus { border-color: #6366f1; }
     }
 
-    /* Crossword */
-    .cw-wrap { display: flex; flex-direction: column; gap: 16px; }
-    .cw-grid-img { max-width: 100%; border-radius: 10px; max-height: 280px; object-fit: contain; }
-    .cw-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; @media (max-width: 600px) { grid-template-columns: 1fr; } }
-    .cw-col { display: flex; flex-direction: column; gap: 8px; }
-    .cw-col-title {
-      font-size: 0.8rem; font-weight: 800; color: #6366f1;
-      text-transform: uppercase; letter-spacing: 0.05em;
-      padding-bottom: 4px; border-bottom: 2px solid #e0e7ff;
-    }
-    .cw-clue-item { display: flex; align-items: center; gap: 8px; }
-    .cw-num {
-      min-width: 22px; height: 22px; background: #6366f1; color: white;
-      border-radius: 6px; font-size: 0.72rem; font-weight: 800;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .cw-hint { flex: 1; font-size: 0.82rem; color: #475569; line-height: 1.4; }
-    .cw-input {
-      width: 90px; padding: 6px 8px; border: 1.5px solid #e2e8f0;
-      border-radius: 8px; font-size: 0.88rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.08em; color: #1e293b;
-      outline: none; font-family: 'Courier New', monospace; text-align: center;
-      &:focus { border-color: #6366f1; background: #eef2ff; }
-    }
-
     /* Submit row */
     .submit-row { padding: 8px 0 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
     .submit-hint {
@@ -664,6 +742,65 @@ interface AiFeedback {
 }
 .badge-pass { background: #dcfce7; color: #16a34a; }
 .badge-fail { background: #fee2e2; color: #dc2626; }
+
+    .cw-wrap { display: flex; flex-direction: column; gap: 16px; }
+
+    .cw-grid-outer { display: inline-flex; flex-direction: column; gap: 1px; overflow-x: auto; }
+    .cw-row { display: flex; gap: 1px; }
+    .cw-cell {
+      width: 36px; height: 36px; border: 1.5px solid #94a3b8;
+      position: relative; background: #fff; flex-shrink: 0;
+    }
+    .cw-cell-empty-space { width: 36px; height: 36px; background: transparent; flex-shrink: 0; }
+    .cw-cell-correct { background: #dcfce7 !important; border-color: #16a34a; }
+    .cw-cell-wrong { background: #fee2e2 !important; border-color: #dc2626; }
+    .cw-cell-empty { background: #fef9c3 !important; border-color: #ca8a04; }
+    .cw-cell-num {
+      position: absolute; top: 1px; left: 2px;
+      font-size: 9px; font-weight: 700; color: #475569; line-height: 1;
+      pointer-events: none; z-index: 1;
+    }
+    .cw-cell-input {
+      width: 100%; height: 100%; border: none; outline: none;
+      text-align: center; font-size: 15px; font-weight: 700;
+      text-transform: uppercase; background: transparent;
+      padding: 0; cursor: text;
+    }
+    .cw-clues-section { display: flex; flex-wrap: wrap; gap: 16px; }
+    .cw-clues-group { min-width: 180px; }
+    .cw-clues-title { font-weight: 700; color: #475569; font-size: 13px; margin-bottom: 6px; }
+    .cw-clue-row-item { display: flex; gap: 6px; font-size: 13px; margin-bottom: 4px; color: #334155; }
+    .cw-clue-num { font-weight: 700; min-width: 20px; color: #6366f1; }
+    .cw-clue-text { flex: 1; }
+    .cw-check-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #6366f1; color: #fff; border: none;
+      padding: 8px 18px; border-radius: 8px; font-size: 14px;
+      font-weight: 600; cursor: pointer; align-self: flex-start;
+    }
+    .cw-check-btn:hover { background: #4f46e5; }
+    .btn-view {
+      background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
+      padding: 3px 10px; border-radius: 6px; font-size: 12px;
+      cursor: pointer; font-weight: 500;
+    }
+    .btn-view:hover { background: #e2e8f0; }
+    .review-wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; padding: 16px; }
+    .review-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .review-header h2 { font-size: 1.2rem; font-weight: 700; color: #1e293b; margin: 0; }
+    .review-meta { display: flex; gap: 16px; font-size: 14px; color: #475569; }
+    .review-q-card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 16px; }
+    .review-q-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+    .review-q-num { background: #6366f1; color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+    .review-q-text { flex: 1; font-size: 14px; color: #1e293b; }
+    .review-q-pts { font-size: 13px; font-weight: 600; color: #6366f1; white-space: nowrap; }
+    .review-answer-row { display: flex; flex-direction: column; gap: 6px; }
+    .review-student-ans { display: flex; gap: 8px; font-size: 14px; color: #334155; }
+    .review-label { font-weight: 600; color: #475569; }
+    .review-feedback { font-size: 13px; color: #6366f1; font-style: italic; padding: 6px 10px; background: #f0f0ff; border-radius: 6px; }
+    .cw-cell-review-letter { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; text-transform: uppercase; }
+    .btn-back { display: inline-flex; align-items: center; gap: 6px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn-back:hover { background: #e2e8f0; }
   `]
 })
 export class StudentAssignmentComponent implements OnInit {
@@ -692,6 +829,8 @@ export class StudentAssignmentComponent implements OnInit {
   answeredCount = signal(0);
   aiFeedbacks = signal<Map<string, AiFeedback>>(new Map());
   gradingProgress = signal('');
+  reviewAttempt = signal<(AssignmentAttempt & { answers: QuestionAnswer[] }) | null>(null);
+  cwChecked = signal<Map<string, Map<string, 'correct' | 'wrong' | 'empty'>>>(new Map());
 
   aiGradedQuestions = computed(() =>
     this.questions().filter(q => {
@@ -899,6 +1038,21 @@ export class StudentAssignmentComponent implements OnInit {
     return d.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
+  getReviewAnswer(qId: string): QuestionAnswer | undefined {
+    return (this.reviewAttempt()?.answers ?? []).find(a => a.question === qId);
+  }
+
+  viewAttempt(id: string) {
+    this.phase.set('loading');
+    this.progressService.getAttemptDetail(id).subscribe({
+      next: (detail) => {
+        this.reviewAttempt.set(detail);
+        this.phase.set('review');
+      },
+      error: () => this.phase.set('intro'),
+    });
+  }
+
   goBack() {
     this.router.navigate(['/student/modules', this.moduleId, 'lessons', this.lessonId]);
   }
@@ -990,22 +1144,117 @@ export class StudentAssignmentComponent implements OnInit {
   }
 
   // ── Crossword helpers ──────────────────────────────────────
-  getCrosswordClues(q: AssignmentQuestion, direction: 'across' | 'down') {
-    return (q.question_data?.clues || [])
-      .filter((c: any) => c.direction === direction)
-      .sort((a: any, b: any) => a.number - b.number);
+  buildCrosswordGrid(clues: any[]): { placed: PlacedWord[]; grid: Map<string, CellData> } {
+    const placed: PlacedWord[] = [];
+    const grid = new Map<string, CellData>();
+
+    const setCell = (r: number, c: number, letter: string, wordKey: string, num?: number) => {
+      const key = `${r}_${c}`;
+      const existing = grid.get(key);
+      if (existing) {
+        if (!existing.wordKeys.includes(wordKey)) existing.wordKeys.push(wordKey);
+      } else {
+        grid.set(key, { correct: letter, number: num, wordKeys: [wordKey] });
+      }
+    };
+
+    const canPlace = (word: string, dir: 'across' | 'down', row: number, col: number): boolean => {
+      for (let i = 0; i < word.length; i++) {
+        const r = dir === 'across' ? row : row + i;
+        const c = dir === 'across' ? col + i : col;
+        const key = `${r}_${c}`;
+        const cell = grid.get(key);
+        if (cell && cell.correct !== word[i]) return false;
+      }
+      return true;
+    };
+
+    const placeWord = (pw: PlacedWord) => {
+      const wordKey = `${pw.number}_${pw.direction}`;
+      for (let i = 0; i < pw.answer.length; i++) {
+        const r = pw.direction === 'across' ? pw.row : pw.row + i;
+        const c = pw.direction === 'across' ? pw.col + i : pw.col;
+        setCell(r, c, pw.answer[i], wordKey, i === 0 ? pw.number : undefined);
+      }
+      placed.push(pw);
+    };
+
+    const words = clues
+      .filter(c => c.answer && c.text)
+      .map(c => ({ ...c, answer: (c.answer as string).toUpperCase().replace(/\s/g, '') }));
+
+    if (!words.length) return { placed, grid };
+
+    const OFFSET = 20;
+    const first = words[0];
+    const firstDir = first.direction === 'across' || first.direction === 'down' ? first.direction : 'across';
+    placeWord({ ...first, direction: firstDir, row: OFFSET, col: OFFSET });
+
+    for (let wi = 1; wi < words.length; wi++) {
+      const w = words[wi];
+      let bestDir: 'across' | 'down' = w.direction === 'across' || w.direction === 'down' ? w.direction : 'across';
+      let found = false;
+
+      for (const pw of placed) {
+        if (found) break;
+        const dirs: ('across' | 'down')[] = bestDir === 'across' ? ['down', 'across'] : ['across', 'down'];
+        for (const tryDir of dirs) {
+          if (found) break;
+          for (let ai = 0; ai < pw.answer.length; ai++) {
+            if (found) break;
+            for (let bi = 0; bi < w.answer.length; bi++) {
+              if (pw.answer[ai] !== w.answer[bi]) continue;
+              const pr = pw.direction === 'across' ? pw.row : pw.row + ai;
+              const pc = pw.direction === 'across' ? pw.col + ai : pw.col;
+              const nr = tryDir === 'across' ? pr : pr - bi;
+              const nc = tryDir === 'across' ? pc - bi : pc;
+              if (canPlace(w.answer, tryDir, nr, nc)) {
+                placeWord({ ...w, direction: tryDir, row: nr, col: nc });
+                found = true;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      if (!found) {
+        const rows = [...grid.keys()].map(k => parseInt(k.split('_')[0]));
+        const maxRow = rows.length ? Math.max(...rows) : OFFSET;
+        placeWord({ ...w, direction: bestDir, row: maxRow + 3, col: OFFSET });
+      }
+    }
+
+    return { placed, grid };
   }
 
-  getCrosswordAnswer(qId: string, num: number, direction: string): string {
+  private cwGridCache = new Map<string, { placed: PlacedWord[]; grid: Map<string, CellData> }>();
+
+  getCrosswordGrid(q: any): { placed: PlacedWord[]; grid: Map<string, CellData>; rows: number[]; cols: number[] } {
+    if (!this.cwGridCache.has(q.id)) {
+      this.cwGridCache.set(q.id, this.buildCrosswordGrid(q.question_data?.clues || []));
+    }
+    const { placed, grid } = this.cwGridCache.get(q.id)!;
+    const keys = [...grid.keys()];
+    const rows = [...new Set(keys.map(k => parseInt(k.split('_')[0])))].sort((a, b) => a - b);
+    const cols = [...new Set(keys.map(k => parseInt(k.split('_')[1])))].sort((a, b) => a - b);
+    return { placed, grid, rows, cols };
+  }
+
+  getCellData(q: any, row: number, col: number): CellData | null {
+    return this.getCrosswordGrid(q).grid.get(`${row}_${col}`) ?? null;
+  }
+
+  getCellValue(qId: string, row: number, col: number): string {
     const map: Record<string, string> = this.answersMap.get(qId) || {};
-    return map[`${num}_${direction}`] || '';
+    return map[`${row}_${col}`] || '';
   }
 
-  setCrosswordAnswer(qId: string, num: number, direction: string, value: string) {
+  setCellValue(qId: string, row: number, col: number, value: string, direction: 'across' | 'down') {
     const current: Record<string, string> = { ...(this.answersMap.get(qId) || {}) };
-    const key = `${num}_${direction}`;
+    const key = `${row}_${col}`;
     if (value.trim()) {
-      current[key] = value.toUpperCase();
+      current[key] = value.toUpperCase()[0] || '';
     } else {
       delete current[key];
     }
@@ -1017,9 +1266,123 @@ export class StudentAssignmentComponent implements OnInit {
 
     const att = this.attempt();
     if (!att) return;
-    this.progressService.saveAnswer({ attempt: att.id, question: qId, answer_data: { selected: current } })
-      .pipe(catchError(() => of(null)))
-      .subscribe();
+    const answerId = this.savedAnswerIds.get(qId);
+    if (answerId) {
+      this.progressService.patchAnswer(answerId, { answer_data: { cells: current } })
+        .pipe(catchError(() => of(null))).subscribe();
+    } else {
+      this.progressService.saveAnswer({ attempt: att.id, question: qId, answer_data: { cells: current } })
+        .pipe(catchError(() => of(null)))
+        .subscribe(ans => { if (ans) this.savedAnswerIds.set(qId, ans.id); });
+    }
+  }
+
+  getCellStatus(qId: string, row: number, col: number): 'correct' | 'wrong' | 'empty' | null {
+    const checked = this.cwChecked().get(qId);
+    if (!checked) return null;
+    return checked.get(`${row}_${col}`) ?? null;
+  }
+
+  onCwInput(event: Event, q: any, row: number, col: number) {
+    const input = event.target as HTMLInputElement;
+    const val = input.value.toUpperCase().slice(-1);
+    input.value = val;
+
+    const { placed } = this.getCrosswordGrid(q);
+    const pw = placed.find(p => {
+      for (let i = 0; i < p.answer.length; i++) {
+        const r = p.direction === 'across' ? p.row : p.row + i;
+        const c = p.direction === 'across' ? p.col + i : p.col;
+        if (r === row && c === col) return true;
+      }
+      return false;
+    });
+    const dir = pw?.direction ?? 'across';
+
+    this.setCellValue(q.id, row, col, val, dir);
+
+    if (val) {
+      const nextRow = dir === 'down' ? row + 1 : row;
+      const nextCol = dir === 'across' ? col + 1 : col;
+      const nextEl = document.getElementById(`cw_${q.id}_${nextRow}_${nextCol}`);
+      nextEl?.focus();
+    }
+  }
+
+  onCwKeydown(event: KeyboardEvent, q: any, row: number, col: number) {
+    if (event.key !== 'Backspace') return;
+    const input = event.target as HTMLInputElement;
+    if (input.value) { input.value = ''; this.setCellValue(q.id, row, col, '', 'across'); return; }
+
+    const { placed } = this.getCrosswordGrid(q);
+    const pw = placed.find(p => {
+      for (let i = 0; i < p.answer.length; i++) {
+        const r = p.direction === 'across' ? p.row : p.row + i;
+        const c = p.direction === 'across' ? p.col + i : p.col;
+        if (r === row && c === col) return true;
+      }
+      return false;
+    });
+    const dir = pw?.direction ?? 'across';
+    const prevRow = dir === 'down' ? row - 1 : row;
+    const prevCol = dir === 'across' ? col - 1 : col;
+    const prevEl = document.getElementById(`cw_${q.id}_${prevRow}_${prevCol}`);
+    prevEl?.focus();
+  }
+
+  checkCrossword(q: any) {
+    const { grid } = this.getCrosswordGrid(q);
+    const cells = this.answersMap.get(q.id) as Record<string, string> || {};
+    const statusMap = new Map<string, 'correct' | 'wrong' | 'empty'>();
+
+    for (const [key, cell] of grid.entries()) {
+      const typed = (cells[key] || '').toUpperCase();
+      if (!typed) statusMap.set(key, 'empty');
+      else if (typed === cell.correct) statusMap.set(key, 'correct');
+      else statusMap.set(key, 'wrong');
+    }
+
+    this.cwChecked.update(m => { const nm = new Map(m); nm.set(q.id, statusMap); return nm; });
+
+    const correctAnswer: Record<string, string> = q.correct_answer || {};
+    const wordKeys = Object.keys(correctAnswer);
+    let correctWords = 0;
+    for (const wk of wordKeys) {
+      const [numStr, dir] = wk.split('_');
+      const pw = this.getCrosswordGrid(q).placed.find(p => p.number === +numStr && p.direction === (dir as 'across' | 'down'));
+      if (!pw) continue;
+      let allCorrect = true;
+      for (let i = 0; i < pw.answer.length; i++) {
+        const r = pw.direction === 'across' ? pw.row : pw.row + i;
+        const c = pw.direction === 'across' ? pw.col + i : pw.col;
+        const typed = (cells[`${r}_${c}`] || '').toUpperCase();
+        if (typed !== pw.answer[i]) { allCorrect = false; break; }
+      }
+      if (allCorrect) correctWords++;
+    }
+
+    const score = wordKeys.length > 0 ? Math.round((correctWords / wordKeys.length) * q.points) : 0;
+
+    const att = this.attempt();
+    const answerId = this.savedAnswerIds.get(q.id);
+    if (att && answerId) {
+      this.progressService.patchAnswer(answerId, {
+        points_earned: score,
+        is_correct: score === q.points,
+      }).pipe(catchError(() => of(null))).subscribe();
+
+      const newScore = Math.round((att.score ?? 0) + score);
+      const newPct = att.max_score > 0 ? Math.round((newScore / att.max_score) * 100) : 0;
+      this.attempt.update(a => a ? { ...a, score: newScore, percentage: newPct } : a);
+      this.progressService.patchAttempt(att.id, { score: newScore, percentage: newPct })
+        .pipe(catchError(() => of(null))).subscribe();
+    }
+  }
+
+  getCrosswordClues(q: AssignmentQuestion, direction: 'across' | 'down') {
+    return (q.question_data?.clues || [])
+      .filter((c: any) => c.direction === direction)
+      .sort((a: any, b: any) => a.number - b.number);
   }
 
   safe(html: string): SafeHtml {
