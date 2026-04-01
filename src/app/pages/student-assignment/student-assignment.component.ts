@@ -260,7 +260,7 @@ interface AiFeedback {
                     <textarea class="text-answer"
                       [rows]="getQuestionType(q) === 'essay' ? 6 : 4"
                       [value]="getAnswer(q.id) || ''"
-                      (input)="setAnswer(q.id, $any($event.target).value)"
+                      (input)="setAnswer(q.id, $any($event.target).value, 600)"
                       [placeholder]="getTextareaPlaceholder(q)">
                     </textarea>
                     @if (isImageUrl(q.question_text)) {
@@ -617,6 +617,8 @@ export class StudentAssignmentComponent implements OnInit {
   existingAttempt = signal<AssignmentAttempt | null>(null);
 
   private answersMap = new Map<string, any>();
+  private savedAnswerIds = new Map<string, string>(); // questionId → answerId
+  private saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
   answeredCount = signal(0);
   aiFeedbacks = signal<Map<string, AiFeedback>>(new Map());
   gradingProgress = signal('');
@@ -682,13 +684,17 @@ export class StudentAssignmentComponent implements OnInit {
     if (!student || !a) return;
     this.phase.set('loading');
     this.answersMap.clear();
+    this.savedAnswerIds.clear();
+    this.saveTimers.forEach(t => clearTimeout(t));
+    this.saveTimers.clear();
     this.matchPoolCache.clear();
     this.answeredCount.set(0);
 
+    const computedMax = this.questions().reduce((sum, q) => sum + (q.points || 0), 0);
     this.progressService.createAttempt({
       student: student.id,
       assignment: a.id,
-      max_score: a.total_points || a.questions_max_score || 0,
+      max_score: a.total_points || a.questions_max_score || computedMax,
     }).subscribe({
       next: (att) => {
         this.attempt.set(att);
@@ -709,16 +715,41 @@ export class StudentAssignmentComponent implements OnInit {
     return this.answersMap.get(qId);
   }
 
-  setAnswer(qId: string, value: any) {
+  setAnswer(qId: string, value: any, debounceMs = 0) {
     const wasAnswered = this.isAnswered(qId);
     this.answersMap.set(qId, value);
     if (!wasAnswered && this.isAnswered(qId)) this.answeredCount.update(n => n + 1);
 
     const att = this.attempt();
     if (!att) return;
-    this.progressService.saveAnswer({ attempt: att.id, question: qId, answer_data: { selected: value } })
-      .pipe(catchError(() => of(null)))
-      .subscribe();
+
+    // Eski timer bor bo'lsa bekor qilamiz (debounce)
+    const existing = this.saveTimers.get(qId);
+    if (existing) clearTimeout(existing);
+
+    const doSave = () => {
+      this.saveTimers.delete(qId);
+      const answerId = this.savedAnswerIds.get(qId);
+      if (answerId) {
+        // Allaqachon saqlangan — PATCH
+        this.progressService.patchAnswer(answerId, { answer_data: { selected: value } })
+          .pipe(catchError(() => of(null)))
+          .subscribe();
+      } else {
+        // Birinchi marta — POST
+        this.progressService.saveAnswer({ attempt: att.id, question: qId, answer_data: { selected: value } })
+          .pipe(catchError(() => of(null)))
+          .subscribe(res => {
+            if (res?.id) this.savedAnswerIds.set(qId, res.id);
+          });
+      }
+    };
+
+    if (debounceMs > 0) {
+      this.saveTimers.set(qId, setTimeout(doSave, debounceMs));
+    } else {
+      doSave();
+    }
   }
 
   submitAttempt() {
@@ -826,9 +857,15 @@ export class StudentAssignmentComponent implements OnInit {
 
     const att = this.attempt();
     if (!att) return;
-    this.progressService.saveAnswer({ attempt: att.id, question: qId, answer_data: { selected: updated } })
-      .pipe(catchError(() => of(null)))
-      .subscribe();
+    const answerId = this.savedAnswerIds.get(qId);
+    if (answerId) {
+      this.progressService.patchAnswer(answerId, { answer_data: { selected: updated } })
+        .pipe(catchError(() => of(null))).subscribe();
+    } else {
+      this.progressService.saveAnswer({ attempt: att.id, question: qId, answer_data: { selected: updated } })
+        .pipe(catchError(() => of(null)))
+        .subscribe(res => { if (res?.id) this.savedAnswerIds.set(qId, res.id); });
+    }
   }
 
   getTypeIcon(): string {

@@ -55,6 +55,10 @@ export class ProgressService {
     return this.api.post<QuestionAnswer>('/answers/', data);
   }
 
+  patchAnswer(id: string, data: Partial<QuestionAnswer>): Observable<QuestionAnswer> {
+    return this.api.patch<QuestionAnswer>(`/answers/${id}/`, data);
+  }
+
   getAnswers(attemptId: string): Observable<QuestionAnswer[]> {
     return this.api.getList<QuestionAnswer>('/answers/', { attempt_id: attemptId });
   }
