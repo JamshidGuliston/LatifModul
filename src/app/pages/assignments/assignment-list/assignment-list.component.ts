@@ -177,7 +177,7 @@ import { LanguageService } from '../../../core/services/language.service';
                   </div>
                   <div class="ac-stat highlight-blue">
                     <mat-icon>stars</mat-icon>
-                    <span>{{ a.total_points }} ball</span>
+                    <span>{{ a.total_points || a.questions_max_score || 0 }} ball</span>
                   </div>
                   @if (a.time_limit) {
                     <div class="ac-stat">
@@ -659,7 +659,7 @@ export class AssignmentListComponent implements OnInit {
   }
 
   get totalPoints(): number {
-    return this.assignments().reduce((s, a) => s + (a.total_points || 0), 0);
+    return this.assignments().reduce((s, a) => s + (a.total_points || a.questions_max_score || 0), 0);
   }
 
   get maxQuestions(): number {

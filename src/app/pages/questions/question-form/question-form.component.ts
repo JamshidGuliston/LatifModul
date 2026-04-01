@@ -247,6 +247,67 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
               </div>
             }
 
+            <!-- ═══ CROSSWORD ═══ -->
+            @if (questionType() === 'crossword') {
+              <!-- Grid image -->
+              <div class="form-card">
+                <div class="card-title">
+                  <div class="ct-icon indigo"><mat-icon>grid_on</mat-icon></div>
+                  <span>Krossvord rasmi</span>
+                </div>
+                <p class="card-hint">Krossvord panjara rasmini yuklang yoki URL kiriting</p>
+                <div class="input-group">
+                  <label>Rasm URL</label>
+                  <div class="input-wrap">
+                    <mat-icon>image</mat-icon>
+                    <input type="text" [(ngModel)]="crosswordGridImage" name="cw_grid_image"
+                           placeholder="https://... yoki /media/...">
+                  </div>
+                </div>
+                @if (crosswordGridImage) {
+                  <img [src]="crosswordGridImage" alt="krossvord" class="cw-preview-img">
+                }
+              </div>
+
+              <!-- Clues -->
+              <div class="form-card">
+                <div class="card-title">
+                  <div class="ct-icon indigo"><mat-icon>format_list_numbered</mat-icon></div>
+                  <span>Ko'rsatmalar (Clues)</span>
+                </div>
+                <p class="card-hint">Har bir raqam uchun ko'rsatma va to'g'ri javobni kiriting</p>
+
+                <div class="cw-clues-list">
+                  @for (clue of crosswordClues; track $index; let i = $index) {
+                    <div class="cw-clue-row">
+                      <div class="cw-num-wrap">
+                        <input type="number" class="cw-num-input" [(ngModel)]="crosswordClues[i].number"
+                               [name]="'cw_num_' + i" min="1" placeholder="#">
+                        <select class="cw-dir-select" [(ngModel)]="crosswordClues[i].direction" [name]="'cw_dir_' + i">
+                          <option value="across">→ Gorizontal</option>
+                          <option value="down">↓ Vertikal</option>
+                        </select>
+                      </div>
+                      <div class="cw-text-wrap">
+                        <input class="cw-clue-input" [(ngModel)]="crosswordClues[i].text"
+                               [name]="'cw_text_' + i" placeholder="Ko'rsatma matni...">
+                        <input class="cw-answer-input" [(ngModel)]="crosswordClues[i].answer"
+                               [name]="'cw_ans_' + i" placeholder="Javob (katta harf bilan)">
+                      </div>
+                      <button class="opt-del" type="button" (click)="removeCrosswordClue(i)">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  }
+                </div>
+
+                <button class="add-option-btn" type="button" (click)="addCrosswordClue()">
+                  <mat-icon>add</mat-icon>
+                  Ko'rsatma qo'shish
+                </button>
+              </div>
+            }
+
             <!-- JSON Data (advanced) -->
             <div class="form-card collapsible" [class.open]="showAdvanced()">
               <div class="card-title clickable" (click)="showAdvanced.set(!showAdvanced())">
@@ -343,6 +404,19 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
                     <mat-icon>compare_arrows</mat-icon>
                     Mos variantni tanlaydi
                   </div>
+                }
+
+                <!-- Preview: Crossword -->
+                @if (questionType() === 'crossword') {
+                  @if (crosswordGridImage) {
+                    <img [src]="crosswordGridImage" alt="krossvord" class="prev-img" style="max-height:160px">
+                  }
+                  @if (crosswordClues.length > 0) {
+                    <div class="cw-prev-summary">
+                      <span>→ {{ crosswordAcross().length }} gorizontal</span>
+                      <span>↓ {{ crosswordDown().length }} vertikal</span>
+                    </div>
+                  }
                 }
 
                 <div class="prev-footer">
@@ -460,6 +534,7 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
       &.teal   { background: linear-gradient(135deg, #2dd4bf, #0d9488); }
       &.orange { background: linear-gradient(135deg, #fbbf24, #d97706); }
       &.red    { background: linear-gradient(135deg, #f87171, #dc2626); }
+      &.indigo { background: linear-gradient(135deg, #818cf8, #4f46e5); }
       &.gray   { background: var(--gray-200); mat-icon { color: var(--gray-600); } }
     }
 
@@ -664,6 +739,57 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
       mat-icon { font-size: 16px; width: 16px; height: 16px; }
     }
 
+    /* Crossword */
+    .cw-preview-img { max-width: 100%; max-height: 200px; border-radius: 10px; object-fit: contain; }
+
+    .cw-clues-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .cw-clue-row {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 10px 12px; background: var(--gray-50);
+      border: 1px solid var(--gray-200); border-radius: 12px;
+    }
+
+    .cw-num-wrap { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+
+    .cw-num-input {
+      width: 52px; height: 32px; padding: 0 8px;
+      border: 1px solid var(--gray-200); border-radius: 8px;
+      background: white; font-size: 0.88rem; font-weight: 700;
+      color: #4f46e5; text-align: center; outline: none;
+      &:focus { border-color: #6366f1; }
+    }
+
+    .cw-dir-select {
+      height: 28px; padding: 0 6px;
+      border: 1px solid var(--gray-200); border-radius: 8px;
+      background: white; font-size: 0.75rem; color: var(--gray-700);
+      cursor: pointer; outline: none;
+    }
+
+    .cw-text-wrap { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+
+    .cw-clue-input, .cw-answer-input {
+      width: 100%; padding: 7px 10px;
+      border: 1px solid var(--gray-200); border-radius: 8px;
+      background: white; font-size: 0.88rem; color: var(--gray-900);
+      outline: none; font-family: inherit;
+      &::placeholder { color: var(--gray-400); }
+      &:focus { border-color: #6366f1; }
+    }
+
+    .cw-answer-input {
+      font-weight: 700; color: #059669;
+      background: #ecfdf5; border-color: #6ee7b7;
+      letter-spacing: 0.05em;
+      &:focus { border-color: #059669; }
+    }
+
+    .cw-prev-summary {
+      display: flex; gap: 12px; margin-top: 8px;
+      font-size: 0.8rem; font-weight: 600; color: #4f46e5;
+    }
+
     .prev-footer { border-top: 1px solid var(--gray-100); padding-top: 12px; }
 
     .prev-badge {
@@ -739,6 +865,12 @@ export class QuestionFormComponent implements OnInit {
   matchCorrects: string[] = [''];
   matchDistractors: string[] = [''];
 
+  // Crossword
+  crosswordGridImage = '';
+  crosswordClues: { number: number; direction: 'across' | 'down'; text: string; answer: string }[] = [
+    { number: 1, direction: 'across', text: '', answer: '' }
+  ];
+
   questionDataStr = '{}';
   correctAnswerStr = '{}';
 
@@ -748,6 +880,7 @@ export class QuestionFormComponent implements OnInit {
       essay: 'article',
       true_false: 'rule',
       matching: 'compare_arrows',
+      crossword: 'grid_on',
     };
     return map[this.questionType()] || 'quiz';
   }
@@ -758,6 +891,7 @@ export class QuestionFormComponent implements OnInit {
       essay: 'Esse',
       true_false: "To'g'ri/Noto'g'ri",
       matching: 'Moslashtirish',
+      crossword: 'Krossvord',
     };
     return map[this.questionType()] || this.questionType();
   }
@@ -779,6 +913,7 @@ export class QuestionFormComponent implements OnInit {
 
   private detectQuestionType(typeName: string, graderType?: string): string {
     const n = (typeName + ' ' + (graderType || '')).toLowerCase();
+    if (n.includes('cross') || n.includes('kross')) return 'crossword';
     if (n.includes('true') || n.includes('false')) return 'true_false';
     if (n.includes('match')) return 'matching';
     if (n.includes('essay')) return 'essay';
@@ -819,6 +954,16 @@ export class QuestionFormComponent implements OnInit {
   removeMatchCorrect(i: number): void { this.matchCorrects.splice(i, 1); }
   addMatchDistractor(): void { this.matchDistractors.push(''); }
   removeMatchDistractor(i: number): void { this.matchDistractors.splice(i, 1); }
+
+  // ── Crossword helpers ──────────────────────────────────────
+  addCrosswordClue(): void {
+    const maxNum = this.crosswordClues.reduce((m, c) => Math.max(m, c.number), 0);
+    this.crosswordClues.push({ number: maxNum + 1, direction: 'across', text: '', answer: '' });
+  }
+  removeCrosswordClue(i: number): void { this.crosswordClues.splice(i, 1); }
+
+  crosswordAcross(): typeof this.crosswordClues { return this.crosswordClues.filter(c => c.direction === 'across'); }
+  crosswordDown(): typeof this.crosswordClues { return this.crosswordClues.filter(c => c.direction === 'down'); }
 
   // ── JSON sync ──────────────────────────────────────────────
   syncToJson(): void {
@@ -873,45 +1018,64 @@ export class QuestionFormComponent implements OnInit {
             explanation: q.explanation
           };
 
-          // Reload assignment type if editing
-          if (q.assignment && !this.route.snapshot.queryParams['assignment_id']) {
-            this.assignmentService.getById(q.assignment).subscribe({
+          // Detect type from question_data.type first (most reliable),
+          // then fall back to assignment type
+          const typeFromData = q.question_data?.type as string | undefined;
+          const loadAnswers = (qt: string) => {
+            if (qt === 'multiple_choice') {
+              if (Array.isArray(q.question_data?.options)) {
+                this.options = [...q.question_data.options];
+                while (this.options.length < 2) this.options.push('');
+              }
+              const ans = q.correct_answer?.answer;
+              if (Array.isArray(ans)) this.correctAnswers = [...ans];
+              else if (ans) this.correctAnswers = [ans];
+
+            } else if (qt === 'true_false') {
+              const ans = q.correct_answer?.answer;
+              if (ans === true || ans === 'true') this.trueFalseAnswer.set(true);
+              else if (ans === false || ans === 'false') this.trueFalseAnswer.set(false);
+
+            } else if (qt === 'short_answer' || qt === 'essay') {
+              this.sampleAnswer = q.correct_answer?.answer || '';
+
+            } else if (qt === 'matching') {
+              const ans = q.correct_answer;
+              if (Array.isArray(ans)) this.matchCorrects = [...ans];
+              else if (ans) this.matchCorrects = [String(ans)];
+              this.matchDistractors = q.question_data?.distractors?.length
+                ? [...q.question_data.distractors] : [''];
+
+            } else if (qt === 'crossword') {
+              this.crosswordGridImage = q.question_data?.grid_image || '';
+              if (Array.isArray(q.question_data?.clues) && q.question_data.clues.length) {
+                this.crosswordClues = [...q.question_data.clues];
+              }
+            }
+          };
+
+          if (typeFromData) {
+            // Type is embedded in question_data — use it directly
+            this.questionType.set(typeFromData);
+            loadAnswers(typeFromData);
+            this.loading.set(false);
+          } else {
+            // Fall back to assignment type
+            const assignmentIdToLoad = q.assignment || this.assignmentId;
+            this.assignmentService.getById(assignmentIdToLoad).subscribe({
               next: (a) => {
                 const t = a.assignment_type;
-                if (t) this.questionType.set(this.detectQuestionType(t.name || '', t.grader_type || ''));
-              }
+                const qt = t ? this.detectQuestionType(t.name || '', t.grader_type || '') : 'multiple_choice';
+                this.questionType.set(qt);
+                loadAnswers(qt);
+                this.loading.set(false);
+              },
+              error: () => this.loading.set(false)
             });
-          }
-
-          const qt = this.questionType();
-
-          if (qt === 'multiple_choice') {
-            if (Array.isArray(q.question_data?.options)) {
-              this.options = [...q.question_data.options];
-              while (this.options.length < 2) this.options.push('');
-            }
-            const ans = q.correct_answer?.answer;
-            if (Array.isArray(ans)) this.correctAnswers = [...ans];
-            else if (ans) this.correctAnswers = [ans];
-
-          } else if (qt === 'true_false') {
-            const ans = q.correct_answer?.answer;
-            if (ans === true || ans === 'true') this.trueFalseAnswer.set(true);
-            else if (ans === false || ans === 'false') this.trueFalseAnswer.set(false);
-
-          } else if (qt === 'short_answer' || qt === 'essay') {
-            this.sampleAnswer = q.correct_answer?.answer || '';
-
-          } else if (qt === 'matching') {
-            const ans = q.correct_answer;
-            if (Array.isArray(ans)) this.matchCorrects = [...ans];
-            else if (ans) this.matchCorrects = [ans];
-            this.matchDistractors = [...(q.question_data?.distractors || [''])];
           }
 
           this.questionDataStr = JSON.stringify(q.question_data, null, 2);
           this.correctAnswerStr = JSON.stringify(q.correct_answer, null, 2);
-          this.loading.set(false);
         },
         error: () => this.loading.set(false)
       });
@@ -954,6 +1118,14 @@ export class QuestionFormComponent implements OnInit {
       const distractors = this.matchDistractors.filter(d => d.trim());
       questionData = { type: 'matching', distractors };
       correctAnswer = corrects.length === 1 ? corrects[0] : corrects;
+
+    } else if (qt === 'crossword') {
+      const clues = this.crosswordClues.filter(c => c.text.trim() && c.answer.trim());
+      questionData = { type: 'crossword', grid_image: this.crosswordGridImage, clues };
+      // correct_answer: map of "number_direction" -> answer for grading
+      const answerMap: Record<string, string> = {};
+      clues.forEach(c => { answerMap[`${c.number}_${c.direction}`] = c.answer.toUpperCase(); });
+      correctAnswer = answerMap;
 
     } else {
       // Fallback: use raw JSON fields

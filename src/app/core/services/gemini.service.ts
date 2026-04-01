@@ -75,7 +75,9 @@ export class GeminiService {
      * Rasmni yuklab base64 ga o'giradi
      */
     private async fetchImageAsBase64(url: string): Promise<{ data: string; mimeType: string }> {
+        console.log('[GeminiService] Fetching image:', url);
         const response = await fetch(url);
+        console.log('[GeminiService] Image fetch status:', response.status, response.headers.get('content-type'));
         const buffer = await response.arrayBuffer();
         const bytes = new Uint8Array(buffer);
         let binary = '';
@@ -119,17 +121,23 @@ Javobni FAQAT quyidagi JSON formatda ber (boshqa hech narsa yozma):
             ]);
 
             const text = result.response.text().trim();
-            const match = text.match(/\{[\s\S]*?\}/);
+            console.log('[GeminiService] Raw response:', text);
+
+            // Handle ```json ... ``` blocks and plain JSON
+            const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+            const match = cleaned.match(/\{[\s\S]*\}/);
             if (match) {
                 const parsed = JSON.parse(match[0]);
+                console.log('[GeminiService] Parsed:', parsed);
                 return {
                     score: Math.min(Math.max(Number(parsed.score) || 0, 0), maxPoints),
                     feedback: parsed.feedback || ''
                 };
             }
+            console.warn('[GeminiService] Could not parse JSON from:', cleaned);
             return { score: 0, feedback: text };
-        } catch (err) {
-            console.error('AI grading error:', err);
+        } catch (err: any) {
+            console.error('[GeminiService] AI grading error:', err?.message || err);
             return { score: 0, feedback: 'AI tekshirishda xatolik yuz berdi.' };
         }
     }

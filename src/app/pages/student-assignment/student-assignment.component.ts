@@ -199,6 +199,53 @@ interface AiFeedback {
                     </div>
                   }
 
+                  <!-- Crossword -->
+                  @if (getQuestionType(q) === 'crossword') {
+                    <div class="cw-wrap">
+                      @if (q.question_data?.grid_image) {
+                        <img [src]="q.question_data.grid_image" alt="krossvord" class="cw-grid-img">
+                      }
+                      @if (q.question_data?.clues?.length) {
+                        <div class="cw-cols">
+                          <!-- Across -->
+                          @if (getCrosswordClues(q, 'across').length > 0) {
+                            <div class="cw-col">
+                              <div class="cw-col-title">→ Gorizontal</div>
+                              @for (clue of getCrosswordClues(q, 'across'); track clue.number) {
+                                <div class="cw-clue-item">
+                                  <span class="cw-num">{{ clue.number }}</span>
+                                  <span class="cw-hint">{{ clue.text }}</span>
+                                  <input class="cw-input"
+                                    type="text"
+                                    [value]="getCrosswordAnswer(q.id, clue.number, 'across')"
+                                    (input)="setCrosswordAnswer(q.id, clue.number, 'across', $any($event.target).value)"
+                                    placeholder="Javob...">
+                                </div>
+                              }
+                            </div>
+                          }
+                          <!-- Down -->
+                          @if (getCrosswordClues(q, 'down').length > 0) {
+                            <div class="cw-col">
+                              <div class="cw-col-title">↓ Vertikal</div>
+                              @for (clue of getCrosswordClues(q, 'down'); track clue.number) {
+                                <div class="cw-clue-item">
+                                  <span class="cw-num">{{ clue.number }}</span>
+                                  <span class="cw-hint">{{ clue.text }}</span>
+                                  <input class="cw-input"
+                                    type="text"
+                                    [value]="getCrosswordAnswer(q.id, clue.number, 'down')"
+                                    (input)="setCrosswordAnswer(q.id, clue.number, 'down', $any($event.target).value)"
+                                    placeholder="Javob...">
+                                </div>
+                              }
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+
                   <!-- Short answer / Essay / Default -->
                   @if (getQuestionType(q) === 'short_answer' || getQuestionType(q) === 'essay' || getQuestionType(q) === 'text') {
                     @if (isImageUrl(q.question_text)) {
@@ -480,6 +527,31 @@ interface AiFeedback {
       &:focus { border-color: #6366f1; }
     }
 
+    /* Crossword */
+    .cw-wrap { display: flex; flex-direction: column; gap: 16px; }
+    .cw-grid-img { max-width: 100%; border-radius: 10px; max-height: 280px; object-fit: contain; }
+    .cw-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; @media (max-width: 600px) { grid-template-columns: 1fr; } }
+    .cw-col { display: flex; flex-direction: column; gap: 8px; }
+    .cw-col-title {
+      font-size: 0.8rem; font-weight: 800; color: #6366f1;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      padding-bottom: 4px; border-bottom: 2px solid #e0e7ff;
+    }
+    .cw-clue-item { display: flex; align-items: center; gap: 8px; }
+    .cw-num {
+      min-width: 22px; height: 22px; background: #6366f1; color: white;
+      border-radius: 6px; font-size: 0.72rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .cw-hint { flex: 1; font-size: 0.82rem; color: #475569; line-height: 1.4; }
+    .cw-input {
+      width: 90px; padding: 6px 8px; border: 1.5px solid #e2e8f0;
+      border-radius: 8px; font-size: 0.88rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em; color: #1e293b;
+      outline: none; font-family: 'Courier New', monospace; text-align: center;
+      &:focus { border-color: #6366f1; background: #eef2ff; }
+    }
+
     /* Submit row */
     .submit-row { padding: 8px 0 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
     .submit-hint {
@@ -671,15 +743,34 @@ export class StudentAssignmentComponent implements OnInit {
       return;
     }
     this.phase.set('grading');
+    let aiTotal = 0;
     for (let i = 0; i < toGrade.length; i++) {
       const q = toGrade[i];
       this.gradingProgress.set(`${i + 1} / ${toGrade.length} tekshirilmoqda...`);
       const answer = this.answersMap.get(q.id) || '';
       if (answer) {
         const fb = await this.geminiService.gradeImageAnswer(q.question_text, answer, q.points);
+        console.log(`[gradeWithAI] q=${q.id} score=${fb.score}/${q.points} feedback=${fb.feedback}`);
+        aiTotal += fb.score;
         this.aiFeedbacks.update(m => { const nm = new Map(m); nm.set(q.id, fb); return nm; });
       }
     }
+
+    // Backend scorega AI scoreni qo'shib yangilash
+    const att = this.attempt();
+    if (att && aiTotal > 0) {
+      const newScore = (att.score ?? 0) + aiTotal;
+      const newMax = att.max_score ?? 0;
+      const newPct = newMax > 0 ? Math.round((newScore / newMax) * 100) : 0;
+      // Avval lokalda yangilaymiz, keyin backendga yuboramiz
+      this.attempt.update(a => a ? { ...a, score: newScore, percentage: newPct } : a);
+      this.progressService.patchAttempt(att.id, { score: newScore, percentage: newPct })
+        .pipe(catchError(() => of(null)))
+        .subscribe(updated => {
+          if (updated) this.attempt.set(updated);
+        });
+    }
+
     this.phase.set('result');
   }
 
@@ -765,6 +856,39 @@ export class StudentAssignmentComponent implements OnInit {
     return this.isImageUrl(q.question_text)
       ? "Masalan: Bu qurilma sistema bloki bo'lib, kompyuterning asosiy qismidir..."
       : 'Javobingizni yozing...';
+  }
+
+  // ── Crossword helpers ──────────────────────────────────────
+  getCrosswordClues(q: AssignmentQuestion, direction: 'across' | 'down') {
+    return (q.question_data?.clues || [])
+      .filter((c: any) => c.direction === direction)
+      .sort((a: any, b: any) => a.number - b.number);
+  }
+
+  getCrosswordAnswer(qId: string, num: number, direction: string): string {
+    const map: Record<string, string> = this.answersMap.get(qId) || {};
+    return map[`${num}_${direction}`] || '';
+  }
+
+  setCrosswordAnswer(qId: string, num: number, direction: string, value: string) {
+    const current: Record<string, string> = { ...(this.answersMap.get(qId) || {}) };
+    const key = `${num}_${direction}`;
+    if (value.trim()) {
+      current[key] = value.toUpperCase();
+    } else {
+      delete current[key];
+    }
+    const wasAnswered = this.isAnswered(qId);
+    this.answersMap.set(qId, current);
+    const nowAnswered = Object.keys(current).length > 0;
+    if (!wasAnswered && nowAnswered) this.answeredCount.update(n => n + 1);
+    if (wasAnswered && !nowAnswered) this.answeredCount.update(n => n - 1);
+
+    const att = this.attempt();
+    if (!att) return;
+    this.progressService.saveAnswer({ attempt: att.id, question: qId, answer_data: { selected: current } })
+      .pipe(catchError(() => of(null)))
+      .subscribe();
   }
 
   safe(html: string): SafeHtml {

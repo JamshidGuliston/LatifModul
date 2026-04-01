@@ -47,6 +47,10 @@ export class ProgressService {
     return this.api.post<AssignmentAttempt>(`/attempts/${id}/submit/`, {});
   }
 
+  patchAttempt(id: string, data: Partial<AssignmentAttempt>): Observable<AssignmentAttempt> {
+    return this.api.patch<AssignmentAttempt>(`/attempts/${id}/`, data);
+  }
+
   saveAnswer(data: { attempt: string; question: string; answer_data: any }): Observable<QuestionAnswer> {
     return this.api.post<QuestionAnswer>('/answers/', data);
   }
