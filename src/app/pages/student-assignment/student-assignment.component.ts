@@ -617,7 +617,7 @@ interface AiFeedback {
                   <div class="review-answer-row">
                     <div class="review-student-ans">
                       <span class="review-label">Javob:</span>
-                      <span>{{ ans?.answer_data?.text || ans?.answer_data?.selected ?? '—' }}</span>
+                      <span>{{ (ans?.answer_data?.text || ans?.answer_data?.selected) ?? '—' }}</span>
                     </div>
                     @if (ans?.feedback) {
                       <div class="review-feedback">{{ ans?.feedback }}</div>
