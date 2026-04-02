@@ -308,6 +308,97 @@ interface AiFeedback {
                     </div>
                   }
 
+                  <!-- Table Fill -->
+                  @if (getQuestionType(q) === 'table_fill') {
+                    <div class="tf-student-wrap">
+                      <table class="tf-student-table">
+                        @if (q.question_data?.headers?.length) {
+                          <thead>
+                            <tr>
+                              @for (h of (q.question_data?.headers || []); track $index) {
+                                <th>{{ h }}</th>
+                              }
+                            </tr>
+                          </thead>
+                        }
+                        <tbody>
+                          @for (row of (q.question_data?.rows || []); track $index; let ri = $index) {
+                            <tr>
+                              @for (cell of row; track $index; let ci = $index) {
+                                <td [class.tf-student-editable]="cell.e">
+                                  @if (cell.e) {
+                                    <input class="tf-student-input"
+                                      [value]="getTfValue(q.id, ri, ci)"
+                                      (input)="setTfValue(q, ri, ci, $any($event.target).value)"
+                                      placeholder="...">
+                                  } @else {
+                                    {{ cell.v }}
+                                  }
+                                </td>
+                              }
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  }
+
+                  <!-- File Upload -->
+                  @if (getQuestionType(q) === 'file_upload') {
+                    <div class="fu-wrap">
+                      @if (q.question_data?.description) {
+                        <p class="fu-desc">
+                          <mat-icon>info</mat-icon>
+                          {{ q.question_data.description }}
+                        </p>
+                      }
+                      @if (getFuFile(q.id)) {
+                        <div class="fu-selected">
+                          <mat-icon>attach_file</mat-icon>
+                          <span class="fu-filename">{{ getFuFile(q.id) }}</span>
+                          <button type="button" class="fu-clear" (click)="clearFuFile(q)">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                      } @else {
+                        <label class="fu-label" [for]="'fu_' + q.id">
+                          <mat-icon>cloud_upload</mat-icon>
+                          <span>Fayl tanlang</span>
+                          <input type="file" [id]="'fu_' + q.id" style="display:none"
+                            [attr.accept]="q.question_data?.accept || undefined"
+                            (change)="onFuChange($event, q)">
+                        </label>
+                      }
+                      <div class="ai-badge" style="background:#fdf4ff;color:#701a75">
+                        <mat-icon>person</mat-icon> O'qituvchi tomonidan baholanadi
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Code -->
+                  @if (getQuestionType(q) === 'code') {
+                    <div class="code-wrap">
+                      @if (q.question_data?.language) {
+                        <div class="code-lang-badge">{{ q.question_data.language.toUpperCase() }}</div>
+                      }
+                      @if (q.question_data?.starter_code) {
+                        <div class="code-starter">
+                          <div class="code-starter-label">Boshlang'ich kod:</div>
+                          <pre class="code-starter-pre">{{ q.question_data.starter_code }}</pre>
+                        </div>
+                      }
+                      <textarea class="code-editor"
+                        [value]="getAnswer(q.id) || ''"
+                        (input)="setAnswer(q.id, $any($event.target).value, 600)"
+                        rows="10"
+                        placeholder="Kodingizni shu yerga yozing...">
+                      </textarea>
+                      <div class="ai-badge">
+                        <mat-icon>auto_awesome</mat-icon> AI tomonidan tekshiriladi
+                      </div>
+                    </div>
+                  }
+
                   <!-- Short answer / Essay / Default -->
                   @if (getQuestionType(q) === 'short_answer' || getQuestionType(q) === 'essay' || getQuestionType(q) === 'text') {
                     @if (isImageUrl(q.question_text)) {
@@ -440,6 +531,61 @@ interface AiFeedback {
                   <div class="review-q-text" [innerHTML]="safe(q.question_text)"></div>
                   <span class="review-q-pts">{{ ans?.points_earned ?? 0 }}/{{ q.points }} ball</span>
                 </div>
+
+                @if (getQuestionType(q) === 'table_fill') {
+                  <div class="tf-student-wrap">
+                    @let tfCells = ans?.answer_data?.cells || {};
+                    <table class="tf-student-table">
+                      @if (q.question_data?.headers?.length) {
+                        <thead>
+                          <tr>
+                            @for (h of (q.question_data?.headers || []); track $index) {
+                              <th>{{ h }}</th>
+                            }
+                          </tr>
+                        </thead>
+                      }
+                      <tbody>
+                        @for (row of (q.question_data?.rows || []); track $index; let ri = $index) {
+                          <tr>
+                            @for (cell of row; track $index; let ci = $index) {
+                              <td [class.tf-student-editable]="cell.e"
+                                  [class.tf-review-correct]="cell.e && (tfCells[ri+'_'+ci]||'').trim().toLowerCase() === (q.correct_answer?.[ri+'_'+ci]||'').trim().toLowerCase() && (tfCells[ri+'_'+ci]||'').trim()"
+                                  [class.tf-review-wrong]="cell.e && (tfCells[ri+'_'+ci]||'').trim() && (tfCells[ri+'_'+ci]||'').trim().toLowerCase() !== (q.correct_answer?.[ri+'_'+ci]||'').trim().toLowerCase()"
+                                  [class.tf-review-empty]="cell.e && !(tfCells[ri+'_'+ci]||'').trim()">
+                                @if (cell.e) {
+                                  <span class="tf-review-val">{{ (tfCells[ri+'_'+ci]) || '—' }}</span>
+                                } @else {
+                                  {{ cell.v }}
+                                }
+                              </td>
+                            }
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+
+                @if (getQuestionType(q) === 'file_upload') {
+                  <div class="review-answer-row">
+                    <div class="review-student-ans">
+                      <span class="review-label">Holat:</span>
+                      <span>{{ ans?.answer_data?.submitted ? '✓ Fayl yuklangan: ' + (ans?.answer_data?.filename || '') : '—' }}</span>
+                    </div>
+                  </div>
+                }
+
+                @if (getQuestionType(q) === 'code') {
+                  <div class="review-answer-row">
+                    @if (ans?.answer_data?.text || ans?.answer_data?.selected) {
+                      <pre class="code-review-pre">{{ ans?.answer_data?.text || ans?.answer_data?.selected }}</pre>
+                    }
+                    @if (ans?.feedback) {
+                      <div class="review-feedback">{{ ans?.feedback }}</div>
+                    }
+                  </div>
+                }
 
                 @if (getQuestionType(q) === 'crossword') {
                   <div class="cw-wrap">
@@ -743,6 +889,90 @@ interface AiFeedback {
 .badge-pass { background: #dcfce7; color: #16a34a; }
 .badge-fail { background: #fee2e2; color: #dc2626; }
 
+    /* Table Fill — student */
+    .tf-student-wrap { overflow-x: auto; }
+    .tf-student-table {
+      border-collapse: collapse; font-size: 0.88rem; min-width: 280px;
+      th { background: #f8fafc; padding: 8px 12px; text-align: left; font-weight: 600; color: #475569; border: 1.5px solid #e2e8f0; }
+      td { padding: 6px 10px; border: 1.5px solid #e2e8f0; color: #334155; vertical-align: middle; }
+    }
+    .tf-student-editable { background: #f0fdf4; min-width: 100px; }
+    .tf-student-input {
+      width: 100%; border: none; background: transparent;
+      font-size: 0.88rem; color: #1e293b; outline: none; font-family: inherit;
+      padding: 2px 0;
+      &::placeholder { color: #94a3b8; }
+      &:focus { border-bottom: 1.5px solid #6366f1; }
+    }
+    .tf-review-correct { background: #dcfce7 !important; }
+    .tf-review-wrong { background: #fee2e2 !important; }
+    .tf-review-empty { background: #fef9c3 !important; }
+    .tf-review-val { font-weight: 600; }
+
+    /* File Upload — student */
+    .fu-wrap { display: flex; flex-direction: column; gap: 10px; }
+    .fu-desc {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.85rem; color: #701a75; background: #fdf4ff;
+      padding: 8px 12px; border-radius: 8px; margin: 0;
+      mat-icon { font-size: 16px; width: 16px; height: 16px; flex-shrink: 0; }
+    }
+    .fu-label {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 20px; border: 2px dashed #e879f9; border-radius: 12px;
+      cursor: pointer; color: #9d174d; font-size: 0.9rem; font-weight: 600;
+      background: #fdf4ff; transition: all 0.15s; align-self: flex-start;
+      mat-icon { font-size: 22px; width: 22px; height: 22px; }
+      &:hover { background: #fce7f3; border-color: #c026d3; }
+    }
+    .fu-selected {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; background: #f0fdf4; border: 1.5px solid #86efac;
+      border-radius: 10px; font-size: 0.88rem;
+      mat-icon { color: #16a34a; font-size: 20px; width: 20px; height: 20px; }
+    }
+    .fu-filename { flex: 1; color: #166534; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fu-clear {
+      width: 24px; height: 24px; border: none; background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; border-radius: 50%; padding: 0;
+      mat-icon { font-size: 16px; width: 16px; height: 16px; color: #64748b; }
+      &:hover { background: #fee2e2; mat-icon { color: #dc2626; } }
+    }
+
+    /* Code — student */
+    .code-wrap { display: flex; flex-direction: column; gap: 10px; }
+    .code-lang-badge {
+      display: inline-block; padding: 3px 10px; border-radius: 6px;
+      background: #f3e8ff; color: #6b21a8; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.05em; align-self: flex-start;
+    }
+    .code-starter { background: #1e293b; border-radius: 10px; overflow: hidden; }
+    .code-starter-label { font-size: 11px; font-weight: 600; color: #94a3b8; padding: 6px 12px 0; }
+    .code-starter-pre {
+      margin: 0; padding: 8px 12px 12px; font-size: 12px; color: #e2e8f0;
+      font-family: 'Courier New', monospace; white-space: pre-wrap; line-height: 1.5;
+    }
+    .code-editor {
+      width: 100%; box-sizing: border-box; padding: 12px;
+      border: 1.5px solid #e2e8f0; border-radius: 10px;
+      font-size: 13px; font-family: 'Courier New', monospace;
+      line-height: 1.6; resize: vertical; outline: none; color: #1e293b;
+      background: #f8fafc;
+      &:focus { border-color: #6366f1; background: white; }
+    }
+    .code-review-pre {
+      margin: 0; padding: 10px 14px; background: #1e293b; color: #e2e8f0;
+      border-radius: 8px; font-size: 12px; font-family: 'Courier New', monospace;
+      white-space: pre-wrap; line-height: 1.5; overflow-x: auto;
+    }
+
+    .ai-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 0.78rem; font-weight: 600; color: #2563eb;
+      background: #eff6ff; padding: 4px 10px; border-radius: 6px; align-self: flex-start;
+      mat-icon { font-size: 14px; width: 14px; height: 14px; }
+    }
+
     .cw-wrap { display: flex; flex-direction: column; gap: 16px; }
 
     .cw-grid-outer { display: inline-flex; flex-direction: column; gap: 1px; overflow-x: auto; }
@@ -835,7 +1065,7 @@ export class StudentAssignmentComponent implements OnInit {
   aiGradedQuestions = computed(() =>
     this.questions().filter(q => {
       const type = this.getQuestionType(q);
-      return type === 'short_answer' || type === 'essay';
+      return type === 'short_answer' || type === 'essay' || type === 'code';
     })
   );
 
@@ -897,6 +1127,7 @@ export class StudentAssignmentComponent implements OnInit {
     this.saveTimers.forEach(t => clearTimeout(t));
     this.saveTimers.clear();
     this.matchPoolCache.clear();
+    this.fuFiles.clear();
     this.answeredCount.set(0);
 
     const computedMax = this.questions().reduce((sum, q) => sum + (q.points || 0), 0);
@@ -917,6 +1148,7 @@ export class StudentAssignmentComponent implements OnInit {
     if (!this.answersMap.has(qId)) return false;
     const v = this.answersMap.get(qId);
     if (Array.isArray(v)) return v.length > 0;
+    if (v !== null && typeof v === 'object') return Object.keys(v).length > 0;
     return v !== null && v !== '' && v !== undefined;
   }
 
@@ -977,6 +1209,19 @@ export class StudentAssignmentComponent implements OnInit {
   }
 
   private async gradeWithAI() {
+    // Grade table_fill questions (synchronous, exact match)
+    for (const q of this.questions()) {
+      if (this.getQuestionType(q) !== 'table_fill') continue;
+      const score = this.gradeTfQuestion(q);
+      const answerId = this.savedAnswerIds.get(q.id);
+      if (answerId) {
+        this.progressService.patchAnswer(answerId, {
+          points_earned: score,
+          is_correct: score === q.points,
+        }).pipe(catchError(() => of(null))).subscribe();
+      }
+    }
+
     const toGrade = this.aiGradedQuestions();
     if (!toGrade.length) {
       this.phase.set('result');
@@ -1383,6 +1628,88 @@ export class StudentAssignmentComponent implements OnInit {
     return (q.question_data?.clues || [])
       .filter((c: any) => c.direction === direction)
       .sort((a: any, b: any) => a.number - b.number);
+  }
+
+  // ── Table Fill helpers ─────────────────────────────────────
+  getTfValue(qId: string, row: number, col: number): string {
+    const map: Record<string, string> = this.answersMap.get(qId) || {};
+    return map[`${row}_${col}`] || '';
+  }
+
+  setTfValue(q: any, row: number, col: number, value: string) {
+    const key = `${row}_${col}`;
+    const current: Record<string, string> = { ...(this.answersMap.get(q.id) || {}) };
+    if (value.trim()) current[key] = value.trim();
+    else delete current[key];
+
+    const wasAnswered = this.isAnswered(q.id);
+    this.answersMap.set(q.id, current);
+    const nowAnswered = Object.keys(current).length > 0;
+    if (!wasAnswered && nowAnswered) this.answeredCount.update(n => n + 1);
+    if (wasAnswered && !nowAnswered) this.answeredCount.update(n => n - 1);
+
+    const att = this.attempt();
+    if (!att) return;
+    const answerId = this.savedAnswerIds.get(q.id);
+    if (answerId) {
+      this.progressService.patchAnswer(answerId, { answer_data: { cells: current } })
+        .pipe(catchError(() => of(null))).subscribe();
+    } else {
+      this.progressService.saveAnswer({ attempt: att.id, question: q.id, answer_data: { cells: current } })
+        .pipe(catchError(() => of(null)))
+        .subscribe(ans => { if (ans?.id) this.savedAnswerIds.set(q.id, ans.id); });
+    }
+  }
+
+  private gradeTfQuestion(q: AssignmentQuestion): number {
+    const cells: Record<string, string> = this.answersMap.get(q.id) || {};
+    const correct: Record<string, string> = q.correct_answer || {};
+    const keys = Object.keys(correct);
+    if (!keys.length) return 0;
+    let correctCount = 0;
+    for (const key of keys) {
+      const userVal = (cells[key] || '').trim().toLowerCase();
+      const correctVal = (correct[key] || '').trim().toLowerCase();
+      if (userVal === correctVal) correctCount++;
+    }
+    return Math.round((correctCount / keys.length) * q.points);
+  }
+
+  // ── File Upload helpers ────────────────────────────────────
+  private fuFiles = new Map<string, string>();
+
+  getFuFile(qId: string): string {
+    return this.fuFiles.get(qId) || '';
+  }
+
+  onFuChange(event: Event, q: any) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.fuFiles.set(q.id, file.name);
+    const wasAnswered = this.isAnswered(q.id);
+    this.answersMap.set(q.id, { filename: file.name, submitted: true });
+    if (!wasAnswered) this.answeredCount.update(n => n + 1);
+
+    const att = this.attempt();
+    if (!att) return;
+    const answerId = this.savedAnswerIds.get(q.id);
+    const data = { filename: file.name, submitted: true };
+    if (answerId) {
+      this.progressService.patchAnswer(answerId, { answer_data: data })
+        .pipe(catchError(() => of(null))).subscribe();
+    } else {
+      this.progressService.saveAnswer({ attempt: att.id, question: q.id, answer_data: data })
+        .pipe(catchError(() => of(null)))
+        .subscribe(ans => { if (ans?.id) this.savedAnswerIds.set(q.id, ans.id); });
+    }
+  }
+
+  clearFuFile(q: any) {
+    this.fuFiles.delete(q.id);
+    if (this.isAnswered(q.id)) this.answeredCount.update(n => Math.max(0, n - 1));
+    this.answersMap.delete(q.id);
   }
 
   safe(html: string): SafeHtml {

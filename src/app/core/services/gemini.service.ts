@@ -8,7 +8,7 @@ import { environment } from '../../../environments/environment';
 export class GeminiService {
     private genAI: GoogleGenerativeAI;
     private chatSession: ChatSession | null = null;
-    private readonly MODEL_NAME = 'gemini-2.5-flash'; // Good balance of speed and capability
+    private readonly MODEL_NAME = 'gemini-2.5-flash'; // Stable model with image + text support
 
     constructor() {
         // If you don't have it in your environment.ts, please add it:
@@ -127,7 +127,9 @@ Javobni FAQAT quyidagi JSON formatda ber (boshqa hech narsa yozma):
         let binary = '';
         bytes.forEach(b => binary += String.fromCharCode(b));
         const data = btoa(binary);
-        const mimeType = response.headers.get('content-type') || 'image/jpeg';
+        // Strip charset and other params (e.g. "image/jpeg; charset=utf-8" → "image/jpeg")
+        const rawMime = response.headers.get('content-type') || 'image/jpeg';
+        const mimeType = rawMime.split(';')[0].trim();
         return { data, mimeType };
     }
 

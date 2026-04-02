@@ -308,6 +308,159 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
               </div>
             }
 
+            <!-- ═══ TABLE FILL ═══ -->
+            @if (questionType() === 'table_fill') {
+              <div class="form-card">
+                <div class="card-title">
+                  <div class="ct-icon teal"><mat-icon>table_chart</mat-icon></div>
+                  <span>Jadval tuzilmasi</span>
+                </div>
+                <p class="card-hint">
+                  <mat-icon style="font-size:14px;width:14px;height:14px;vertical-align:middle;color:#0ea5e9">edit</mat-icon>
+                  yashil katak — talaba to'ldiradi (siz to'g'ri javobni kiriting).
+                  <mat-icon style="font-size:14px;width:14px;height:14px;vertical-align:middle;color:#64748b">lock</mat-icon>
+                  oq katak — talabaga ko'rsatiladi.
+                </p>
+
+                <div class="tf-controls">
+                  <div class="tf-size-row">
+                    <span class="tf-size-label">Ustunlar:</span>
+                    <button type="button" class="tf-size-btn" (click)="tfRemoveCol()"><mat-icon>remove</mat-icon></button>
+                    <span class="tf-size-val">{{ tfHeaders.length }}</span>
+                    <button type="button" class="tf-size-btn" (click)="tfAddCol()"><mat-icon>add</mat-icon></button>
+                  </div>
+                </div>
+
+                <div class="tf-table-wrap">
+                  <table class="tf-editor-table">
+                    <thead>
+                      <tr>
+                        @for (h of tfHeaders; track $index; let ci = $index) {
+                          <th>
+                            <input class="tf-header-input" [(ngModel)]="tfHeaders[ci]" [name]="'tfh_'+ci" placeholder="Ustun {{ ci+1 }}">
+                          </th>
+                        }
+                        <th class="tf-th-del"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of tfRows; track $index; let ri = $index) {
+                        <tr>
+                          @for (cell of row; track $index; let ci = $index) {
+                            <td [class.tf-cell-editable]="cell.e" [class.tf-cell-static]="!cell.e">
+                              <div class="tf-cell-inner">
+                                <input class="tf-cell-input" [(ngModel)]="tfRows[ri][ci].v" [name]="'tfc_'+ri+'_'+ci"
+                                       [placeholder]="cell.e ? 'Javob...' : 'Matn...'">
+                                <button type="button" class="tf-toggle-btn" (click)="tfToggleEditable(ri, ci)"
+                                        [title]="cell.e ? 'Talaba toldiradi' : 'Korsatiladi'">
+                                  <mat-icon>{{ cell.e ? 'edit' : 'lock' }}</mat-icon>
+                                </button>
+                              </div>
+                            </td>
+                          }
+                          <td class="tf-th-del">
+                            <button type="button" class="opt-del" (click)="tfRemoveRow(ri)">
+                              <mat-icon>close</mat-icon>
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+
+                <button type="button" class="add-option-btn" (click)="tfAddRow()">
+                  <mat-icon>add</mat-icon>
+                  Qator qo'shish
+                </button>
+              </div>
+            }
+
+            <!-- ═══ FILE UPLOAD ═══ -->
+            @if (questionType() === 'file_upload') {
+              <div class="form-card">
+                <div class="card-title">
+                  <div class="ct-icon" style="background:linear-gradient(135deg,#f472b6,#db2777)"><mat-icon>upload_file</mat-icon></div>
+                  <span>Fayl yuklash sozlamalari</span>
+                </div>
+                <p class="card-hint">Talabadan qaysi turdagi fayl yuklanishini belgilang</p>
+                <div class="input-group">
+                  <label>Tavsif (nima yuklash kerakligi)</label>
+                  <div class="input-wrap">
+                    <mat-icon>description</mat-icon>
+                    <input type="text" [(ngModel)]="fuDescription" name="fu_desc"
+                           placeholder="Masalan: PowerPoint taqdimot (.pptx) yuklang">
+                  </div>
+                </div>
+                <div class="input-group">
+                  <label>Qabul qilinadigan fayl turlari (accept)</label>
+                  <div class="input-wrap">
+                    <mat-icon>filter_list</mat-icon>
+                    <input type="text" [(ngModel)]="fuAccept" name="fu_accept"
+                           placeholder=".pptx,.accdb,.pdf">
+                  </div>
+                </div>
+                <div class="ai-info-block" style="background:#fdf4ff;border-color:#e879f9">
+                  <mat-icon style="color:#a21caf">info</mat-icon>
+                  <div>
+                    <strong style="color:#701a75">Qo'lda baholanadi</strong>
+                    <p style="color:#a21caf">Talaba fayl yuklagandan so'ng o'qituvchi uni ko'rib balл qo'yadi.</p>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- ═══ CODE ═══ -->
+            @if (questionType() === 'code') {
+              <div class="form-card">
+                <div class="card-title">
+                  <div class="ct-icon" style="background:linear-gradient(135deg,#c084fc,#7c3aed)"><mat-icon>code</mat-icon></div>
+                  <span>Kod yozish sozlamalari</span>
+                </div>
+                <div class="ai-info-block">
+                  <mat-icon>auto_awesome</mat-icon>
+                  <div>
+                    <strong>AI tomonidan baholanadi</strong>
+                    <p>Talaba kod yozadi, AI avtomatik tekshiradi va ball qo'yadi.</p>
+                  </div>
+                </div>
+                <div class="row-grid">
+                  <div class="input-group">
+                    <label>Dasturlash tili</label>
+                    <div class="input-wrap">
+                      <mat-icon>terminal</mat-icon>
+                      <select style="flex:1;border:none;background:transparent;font-size:0.93rem;color:#1e293b;outline:none"
+                              [(ngModel)]="codeLanguage" name="code_lang">
+                        <option value="html">HTML</option>
+                        <option value="pascal">Pascal</option>
+                        <option value="python">Python</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="css">CSS</option>
+                        <option value="sql">SQL</option>
+                        <option value="other">Boshqa</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="input-group">
+                  <label>Boshlang'ich kod (ixtiyoriy)</label>
+                  <div class="input-wrap textarea-wrap mono">
+                    <mat-icon>article</mat-icon>
+                    <textarea [(ngModel)]="codeStarterCode" name="code_starter" rows="4"
+                              placeholder="Talabaga berilgan boshlang'ich kod..."></textarea>
+                  </div>
+                </div>
+                <div class="input-group">
+                  <label>Namuna yechim (AI uchun)</label>
+                  <div class="input-wrap textarea-wrap mono">
+                    <mat-icon>lightbulb</mat-icon>
+                    <textarea [(ngModel)]="sampleAnswer" name="code_sample" rows="4"
+                              placeholder="To'g'ri yechim namunasi..."></textarea>
+                  </div>
+                </div>
+              </div>
+            }
+
             <!-- JSON Data (advanced) -->
             <div class="form-card collapsible" [class.open]="showAdvanced()">
               <div class="card-title clickable" (click)="showAdvanced.set(!showAdvanced())">
@@ -419,6 +572,48 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
                   }
                 }
 
+                <!-- Preview: Table Fill -->
+                @if (questionType() === 'table_fill') {
+                  <div class="tf-prev-wrap">
+                    <table class="tf-prev-table">
+                      @if (tfHeaders.length) {
+                        <thead><tr>@for (h of tfHeaders; track $index) {<th>{{ h || '—' }}</th>}</tr></thead>
+                      }
+                      <tbody>
+                        @for (row of tfRows; track $index) {
+                          <tr>
+                            @for (cell of row; track $index) {
+                              <td [class.tf-prev-editable]="cell.e">{{ cell.e ? '...' : (cell.v || '—') }}</td>
+                            }
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                    <div style="font-size:11px;color:#0ea5e9;margin-top:6px">
+                      Yashil = talaba to'ldiradi ({{ tfEditableCount() }} ta)
+                    </div>
+                  </div>
+                }
+
+                <!-- Preview: File Upload -->
+                @if (questionType() === 'file_upload') {
+                  <div class="prev-textarea-hint" style="background:#fdf4ff;border-color:#e879f9;color:#701a75">
+                    <mat-icon style="color:#a21caf">upload_file</mat-icon>
+                    Talaba fayl yuklaydi{{ fuAccept ? ' (' + fuAccept + ')' : '' }}
+                  </div>
+                }
+
+                <!-- Preview: Code -->
+                @if (questionType() === 'code') {
+                  <div class="prev-textarea-hint" style="background:#f5f3ff;border-color:#a78bfa;color:#4c1d95">
+                    <mat-icon style="color:#7c3aed">code</mat-icon>
+                    {{ codeLanguage }} kodi yozadi
+                  </div>
+                  <div class="prev-ai-badge">
+                    <mat-icon>auto_awesome</mat-icon> AI tekshiradi
+                  </div>
+                }
+
                 <div class="prev-footer">
                   <span class="prev-badge">
                     <mat-icon>stars</mat-icon>
@@ -497,6 +692,9 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
       &.type-short_answer, &.type-essay { background: #dbeafe; color: #1d4ed8; }
       &.type-true_false { background: #d1fae5; color: #065f46; }
       &.type-matching { background: #fef3c7; color: #92400e; }
+      &.type-table_fill { background: #e0f2fe; color: #0369a1; }
+      &.type-file_upload { background: #fce7f3; color: #9d174d; }
+      &.type-code { background: #f3e8ff; color: #6b21a8; }
     }
 
     /* Layout */
@@ -826,6 +1024,54 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
 
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Table Fill Editor */
+    .tf-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .tf-size-row { display: flex; align-items: center; gap: 8px; }
+    .tf-size-label { font-size: 0.85rem; font-weight: 600; color: var(--gray-600); }
+    .tf-size-btn {
+      width: 28px; height: 28px; border: 1px solid var(--gray-200); background: white;
+      border-radius: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      mat-icon { font-size: 16px; width: 16px; height: 16px; color: var(--gray-600); }
+      &:hover { background: var(--gray-100); }
+    }
+    .tf-size-val { font-size: 0.9rem; font-weight: 700; color: var(--gray-800); min-width: 20px; text-align: center; }
+    .tf-table-wrap { overflow-x: auto; }
+    .tf-editor-table {
+      border-collapse: collapse; font-size: 13px; min-width: 300px;
+      th, td { border: 1px solid var(--gray-200); padding: 4px; }
+      thead th { background: var(--gray-50); padding: 6px 8px; }
+    }
+    .tf-th-del { width: 36px; border: none !important; background: transparent !important; }
+    .tf-header-input {
+      width: 100%; border: none; background: transparent; font-size: 12px;
+      font-weight: 600; color: var(--gray-700); outline: none; min-width: 80px;
+      &::placeholder { color: var(--gray-400); }
+    }
+    .tf-cell-editable { background: #ecfdf5; }
+    .tf-cell-static { background: white; }
+    .tf-cell-inner { display: flex; align-items: center; gap: 4px; }
+    .tf-cell-input {
+      flex: 1; border: none; background: transparent; font-size: 12px;
+      color: var(--gray-900); outline: none; min-width: 60px; padding: 2px 4px;
+      &::placeholder { color: var(--gray-400); }
+    }
+    .tf-toggle-btn {
+      width: 22px; height: 22px; border: none; background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; border-radius: 4px; padding: 0; flex-shrink: 0;
+      mat-icon { font-size: 14px; width: 14px; height: 14px; color: var(--gray-400); }
+      &:hover { background: var(--gray-100); }
+    }
+    .tf-cell-editable .tf-toggle-btn mat-icon { color: #059669; }
+
+    /* Table Fill Preview */
+    .tf-prev-wrap { margin-bottom: 12px; overflow-x: auto; }
+    .tf-prev-table {
+      border-collapse: collapse; font-size: 12px; width: 100%;
+      th { background: var(--gray-100); font-weight: 600; color: var(--gray-700); padding: 5px 8px; border: 1px solid var(--gray-200); }
+      td { padding: 5px 8px; border: 1px solid var(--gray-200); color: var(--gray-700); }
+    }
+    .tf-prev-editable { background: #ecfdf5; color: #059669; font-style: italic; }
   `]
 })
 export class QuestionFormComponent implements OnInit {
@@ -871,6 +1117,21 @@ export class QuestionFormComponent implements OnInit {
     { number: 1, direction: 'across', text: '', answer: '' }
   ];
 
+  // Table fill
+  tfHeaders: string[] = ['Ustun 1', 'Ustun 2', 'Ustun 3'];
+  tfRows: { v: string; e: boolean }[][] = [
+    [{ v: '', e: false }, { v: '', e: false }, { v: '', e: true }],
+    [{ v: '', e: false }, { v: '', e: true }, { v: '', e: false }],
+  ];
+
+  // File upload
+  fuAccept = '';
+  fuDescription = '';
+
+  // Code
+  codeLanguage = 'html';
+  codeStarterCode = '';
+
   questionDataStr = '{}';
   correctAnswerStr = '{}';
 
@@ -881,6 +1142,9 @@ export class QuestionFormComponent implements OnInit {
       true_false: 'rule',
       matching: 'compare_arrows',
       crossword: 'grid_on',
+      table_fill: 'table_chart',
+      file_upload: 'upload_file',
+      code: 'code',
     };
     return map[this.questionType()] || 'quiz';
   }
@@ -892,6 +1156,9 @@ export class QuestionFormComponent implements OnInit {
       true_false: "To'g'ri/Noto'g'ri",
       matching: 'Moslashtirish',
       crossword: 'Krossvord',
+      table_fill: 'Jadval to\'ldirish',
+      file_upload: 'Fayl yuklash',
+      code: 'Kod yozish',
     };
     return map[this.questionType()] || this.questionType();
   }
@@ -914,6 +1181,9 @@ export class QuestionFormComponent implements OnInit {
   private detectQuestionType(typeName: string, graderType?: string): string {
     const n = (typeName + ' ' + (graderType || '')).toLowerCase();
     if (n.includes('cross') || n.includes('kross')) return 'crossword';
+    if (n.includes('table') || n.includes('jadval')) return 'table_fill';
+    if (n.includes('file') || n.includes('upload') || n.includes('fayl')) return 'file_upload';
+    if (n.includes('code') || n.includes('kod') || n.includes('program')) return 'code';
     if (n.includes('true') || n.includes('false')) return 'true_false';
     if (n.includes('match')) return 'matching';
     if (n.includes('essay')) return 'essay';
@@ -954,6 +1224,30 @@ export class QuestionFormComponent implements OnInit {
   removeMatchCorrect(i: number): void { this.matchCorrects.splice(i, 1); }
   addMatchDistractor(): void { this.matchDistractors.push(''); }
   removeMatchDistractor(i: number): void { this.matchDistractors.splice(i, 1); }
+
+  // ── Table Fill helpers ────────────────────────────────────────
+  tfAddRow(): void {
+    this.tfRows.push(this.tfHeaders.map(() => ({ v: '', e: false })));
+  }
+  tfRemoveRow(i: number): void {
+    if (this.tfRows.length > 1) this.tfRows.splice(i, 1);
+  }
+  tfAddCol(): void {
+    this.tfHeaders.push(`Ustun ${this.tfHeaders.length + 1}`);
+    this.tfRows.forEach(row => row.push({ v: '', e: false }));
+  }
+  tfRemoveCol(): void {
+    if (this.tfHeaders.length > 1) {
+      this.tfHeaders.pop();
+      this.tfRows.forEach(row => row.pop());
+    }
+  }
+  tfToggleEditable(ri: number, ci: number): void {
+    this.tfRows[ri][ci].e = !this.tfRows[ri][ci].e;
+  }
+  tfEditableCount(): number {
+    return this.tfRows.reduce((sum, row) => sum + row.filter(c => c.e).length, 0);
+  }
 
   // ── Crossword helpers ──────────────────────────────────────
   addCrosswordClue(): void {
@@ -1051,6 +1345,22 @@ export class QuestionFormComponent implements OnInit {
               if (Array.isArray(q.question_data?.clues) && q.question_data.clues.length) {
                 this.crosswordClues = [...q.question_data.clues];
               }
+            } else if (qt === 'table_fill') {
+              if (Array.isArray(q.question_data?.headers)) {
+                this.tfHeaders = [...q.question_data.headers];
+              }
+              if (Array.isArray(q.question_data?.rows) && q.question_data.rows.length) {
+                this.tfRows = q.question_data.rows.map((row: any[]) =>
+                  row.map((cell: any) => ({ v: cell.v || '', e: !!cell.e }))
+                );
+              }
+            } else if (qt === 'file_upload') {
+              this.fuAccept = q.question_data?.accept || '';
+              this.fuDescription = q.question_data?.description || '';
+            } else if (qt === 'code') {
+              this.codeLanguage = q.question_data?.language || 'html';
+              this.codeStarterCode = q.question_data?.starter_code || '';
+              this.sampleAnswer = q.correct_answer?.answer || '';
             }
           };
 
@@ -1122,10 +1432,28 @@ export class QuestionFormComponent implements OnInit {
     } else if (qt === 'crossword') {
       const clues = this.crosswordClues.filter(c => c.text.trim() && c.answer.trim());
       questionData = { type: 'crossword', grid_image: this.crosswordGridImage, clues };
-      // correct_answer: map of "number_direction" -> answer for grading
       const answerMap: Record<string, string> = {};
       clues.forEach(c => { answerMap[`${c.number}_${c.direction}`] = c.answer.toUpperCase(); });
       correctAnswer = answerMap;
+
+    } else if (qt === 'table_fill') {
+      const rows = this.tfRows.map(row => row.map(cell => ({ v: cell.v, e: cell.e })));
+      questionData = { type: 'table_fill', headers: [...this.tfHeaders], rows };
+      const ca: Record<string, string> = {};
+      this.tfRows.forEach((row, ri) => {
+        row.forEach((cell, ci) => {
+          if (cell.e && cell.v.trim()) ca[`${ri}_${ci}`] = cell.v.trim();
+        });
+      });
+      correctAnswer = ca;
+
+    } else if (qt === 'file_upload') {
+      questionData = { type: 'file_upload', accept: this.fuAccept.trim(), description: this.fuDescription.trim() };
+      correctAnswer = null;
+
+    } else if (qt === 'code') {
+      questionData = { type: 'code', language: this.codeLanguage, starter_code: this.codeStarterCode };
+      correctAnswer = this.sampleAnswer ? { answer: this.sampleAnswer } : {};
 
     } else {
       // Fallback: use raw JSON fields
