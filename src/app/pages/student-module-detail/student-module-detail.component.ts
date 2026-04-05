@@ -105,15 +105,32 @@ import { StudentLessonProgress } from '../../core/models/progress.model';
                       @if (lesson.description) {
                         <p>{{ lesson.description | stripHtml }}</p>
                       }
+                      @if (!isLessonLocked(lesson.id, i) && getLessonCompletion(lesson.id) > 0) {
+                        @let pct = getLessonCompletion(lesson.id);
+                        @let req = lesson.required_completion_percent || 80;
+                        <div class="lesson-progress-row">
+                          <div class="lesson-progress-bar">
+                            <div class="lesson-progress-fill"
+                              [style.width.%]="pct"
+                              [class.passed]="pct >= req">
+                            </div>
+                          </div>
+                          <span class="lesson-progress-pct" [class.passed]="pct >= req">{{ pct }}%</span>
+                        </div>
+                      }
                     </div>
-                    @if (isLessonLocked(lesson.id, i)) {
-                      <mat-icon class="lesson-lock-icon">lock</mat-icon>
-                    } @else {
-                      <mat-icon class="lesson-arrow">chevron_right</mat-icon>
-                    }
-                  </div>
-                }
-              </div>
+                      <div class="lesson-action-icon flex-center">
+                        @if (isLessonLocked(lesson.id, i)) {
+                          <div class="icon-circle lock-bg"><mat-icon>lock</mat-icon></div>
+                        } @else if (getLessonCompletion(lesson.id) >= (lesson.required_completion_percent || 80)) {
+                          <div class="icon-circle done-bg"><mat-icon>check_circle</mat-icon></div>
+                        } @else {
+                          <div class="icon-circle arrow-bg"><mat-icon>arrow_forward_ios</mat-icon></div>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
             }
           </div>
         }
@@ -221,24 +238,28 @@ import { StudentLessonProgress } from '../../core/models/progress.model';
 
     .module-header {
       display: flex;
-      gap: 24px;
-      background: white;
-      border-radius: 16px;
-      padding: 32px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      margin-bottom: 32px;
+      gap: 32px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.6));
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 10px 40px rgba(37, 99, 235, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      margin-bottom: 40px;
+      align-items: center;
     }
 
     .module-info {
       flex: 1;
-      h1 { font-size: 1.75rem; font-weight: 700; color: var(--gray-900); margin: 0 0 8px; }
+      h1 { font-size: 2.2rem; font-weight: 800; color: var(--gray-900); margin: 0 0 12px; letter-spacing: -0.5px; }
     }
 
     .module-desc {
-      color: var(--gray-500);
-      font-size: 0.95rem;
+      color: var(--gray-600);
+      font-size: 1.1rem;
       line-height: 1.6;
-      margin: 0 0 16px;
+      margin: 0 0 24px;
     }
 
     .module-meta { display: flex; gap: 16px; }
@@ -246,90 +267,130 @@ import { StudentLessonProgress } from '../../core/models/progress.model';
     .meta-badge {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
       background: var(--primary-50);
       color: var(--primary-700);
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 0.85rem;
+      padding: 8px 16px;
+      border-radius: 12px;
+      font-size: 0.9rem;
       font-weight: 600;
-      mat-icon { font-size: 16px; width: 16px; height: 16px; }
+      mat-icon { font-size: 18px; width: 18px; height: 18px; }
     }
 
     .module-thumb {
-      width: 200px;
-      min-height: 140px;
-      border-radius: 12px;
+      width: 240px;
+      height: 180px;
+      border-radius: 20px;
       background-size: cover;
       background-position: center;
       background-color: var(--gray-100);
       flex-shrink: 0;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.1);
     }
 
     .lessons-section {
       h2 {
-        font-size: 1.25rem;
-        font-weight: 700;
+        font-size: 1.5rem;
+        font-weight: 800;
         color: var(--gray-900);
-        margin: 0 0 20px;
+        margin: 0 0 24px;
       }
     }
 
     .lessons-list {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 16px;
     }
 
     .lesson-card {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 20px;
       background: white;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+      border: 1px solid transparent;
       cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
 
       &:hover:not(.locked) {
-        transform: translateX(4px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-4px) scale(1.01);
+        box-shadow: 0 12px 30px rgba(37, 99, 235, 0.1);
+        border-color: var(--primary-100);
       }
 
       &.locked {
         cursor: not-allowed;
-        opacity: 0.55;
-        background: #f9fafb;
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(8px);
+        border: 1px dashed var(--gray-300);
+      }
+      
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 6px;
+        background: var(--primary-500);
+        border-radius: 6px 0 0 6px;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      
+      &:hover:not(.locked)::before {
+        opacity: 1;
       }
     }
 
     .lesson-number {
-      width: 40px;
-      height: 40px;
-      background: var(--primary-100);
+      width: 54px;
+      height: 54px;
+      background: linear-gradient(135deg, var(--primary-50), var(--primary-100));
       color: var(--primary-700);
-      border-radius: 10px;
+      border-radius: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 700;
-      font-size: 1rem;
+      font-weight: 800;
+      font-size: 1.25rem;
       flex-shrink: 0;
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.1);
+      transition: all 0.3s;
 
       &.locked-num {
-        background: #e5e7eb;
-        color: #9ca3af;
-        mat-icon { font-size: 20px; width: 20px; height: 20px; }
+        background: var(--gray-100);
+        color: var(--gray-400);
+        box-shadow: none;
+        mat-icon { font-size: 24px; width: 24px; height: 24px; }
       }
+    }
+    
+    .lesson-card:hover:not(.locked) .lesson-number {
+       background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+       color: white;
+       transform: scale(1.05) rotate(-5deg);
+       box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
     }
 
     .lesson-info {
       flex: 1;
       overflow: hidden;
-      h3 { font-size: 1rem; font-weight: 600; color: var(--gray-900); margin: 0 0 2px; }
+      h3 { 
+        font-size: 1.15rem; 
+        font-weight: 700; 
+        color: var(--gray-900); 
+        margin: 0 0 6px; 
+        transition: color 0.3s;
+      }
+      
       p {
-        font-size: 0.85rem;
+        font-size: 0.95rem;
         color: var(--gray-500);
         margin: 0;
         display: -webkit-box;
@@ -337,20 +398,105 @@ import { StudentLessonProgress } from '../../core/models/progress.model';
         -webkit-box-orient: vertical;
         overflow: hidden;
         text-overflow: ellipsis;
+        line-height: 1.5;
+      }
+    }
+    
+    .lesson-card:hover:not(.locked) .lesson-info h3 {
+      color: var(--primary-600);
+    }
+
+    .flex-center {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .icon-circle {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      mat-icon { font-size: 20px; width: 20px; height: 20px; margin-left: 2px; }
+    }
+
+    .arrow-bg {
+      background: var(--primary-50);
+      color: var(--primary-600);
+    }
+
+    .lesson-card:hover:not(.locked) .arrow-bg {
+      background: var(--primary-500);
+      color: white;
+      transform: translateX(6px) scale(1.1);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+
+    .lock-bg {
+      background: var(--gray-100);
+      color: var(--gray-400);
+      mat-icon { margin-left: 0; }
+    }
+
+    .done-bg {
+      background: #d1fae5;
+      color: #10b981;
+      mat-icon { margin-left: 0; font-size: 24px; width: 24px; height: 24px; }
+    }
+
+    .lesson-progress-row {
+      display: flex; align-items: center; gap: 12px; margin-top: 12px;
+    }
+    
+    .lesson-progress-bar {
+      flex: 1; height: 8px; background: var(--gray-100); border-radius: 10px; overflow: hidden;
+      max-width: 180px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+    }
+    
+    .lesson-progress-fill {
+      height: 100%; 
+      background: linear-gradient(90deg, #818cf8, #6366f1); 
+      border-radius: 10px; 
+      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; bottom: 0; right: 0;
+        background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+        animation: shimmer 2s infinite;
+      }
+      
+      &.passed { background: linear-gradient(90deg, #34d399, #10b981); }
+    }
+    
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    
+    .lesson-progress-pct {
+      font-size: 0.85rem; font-weight: 800; color: #6366f1; white-space: nowrap;
+      background: #e0e7ff;
+      padding: 4px 10px;
+      border-radius: 100px;
+      &.passed { 
+        color: #10b981; 
+        background: #d1fae5;
       }
     }
 
-    .lesson-arrow {
-      color: var(--gray-400);
-    }
-
-    .lesson-lock-icon {
-      color: #9ca3af;
-    }
-
     @media (max-width: 768px) {
-      .module-header { flex-direction: column; }
+      .module-header { flex-direction: column; padding: 24px; gap: 24px; }
       .module-thumb { width: 100%; height: 180px; }
+      .lesson-card { flex-direction: column; align-items: flex-start; gap: 16px; padding: 20px;}
+      .lesson-action-icon { align-self: flex-end; }
     }
   `]
 })
@@ -398,12 +544,26 @@ export class StudentModuleDetailComponent implements OnInit {
     });
   }
 
+  getLessonCompletion(lessonId: string): number {
+    return this.lessonProgressMap().get(lessonId)?.completion_percent ?? 0;
+  }
+
   isLessonLocked(lessonId: string, index: number): boolean {
     const mod = this.module();
     if (!mod?.is_sequential) return false;
     if (index === 0) return false;
-    const progress = this.lessonProgressMap().get(lessonId);
-    return !progress?.is_unlocked;
+
+    // Primary: check previous lesson's completion_percent vs its required threshold
+    const prevLesson = this.lessons()[index - 1];
+    if (prevLesson) {
+      const prevPct = this.getLessonCompletion(prevLesson.id);
+      const required = prevLesson.required_completion_percent ?? 80;
+      if (prevPct >= required) return false;
+    }
+
+    // Fallback: check is_unlocked flag (set by backend or by our createLessonProgress call)
+    const thisProgress = this.lessonProgressMap().get(lessonId);
+    return !thisProgress?.is_unlocked;
   }
 
   openLesson(lessonId: string, index: number) {

@@ -30,6 +30,14 @@ export class ProgressService {
     return this.api.getList<StudentLessonProgress>('/lesson-progress/', params);
   }
 
+  createLessonProgress(data: Partial<StudentLessonProgress>): Observable<StudentLessonProgress> {
+    return this.api.post<StudentLessonProgress>('/lesson-progress/', data);
+  }
+
+  patchLessonProgress(id: string, data: Partial<StudentLessonProgress>): Observable<StudentLessonProgress> {
+    return this.api.patch<StudentLessonProgress>(`/lesson-progress/${id}/`, data);
+  }
+
   // Assignment Attempts
   getAttempts(params?: Record<string, string>): Observable<AssignmentAttempt[]> {
     return this.api.getList<AssignmentAttempt>('/attempts/', params);

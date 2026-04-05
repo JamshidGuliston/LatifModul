@@ -629,7 +629,7 @@ import { environment } from '../../../environments/environment';
       align-items: center;
       justify-content: center;
       transform-style: preserve-3d;
-      animation: rotate-slow 20s infinite linear;
+      animation: wobble-slow 16s ease-in-out infinite;
     }
 
     .center-nucleus {
@@ -674,37 +674,44 @@ import { environment } from '../../../environments/environment';
 
     .planet {
       position: absolute;
-      padding: 12px 20px;
+      padding: 12px 24px;
       border-radius: 100px;
       display: flex;
       align-items: center;
       gap: 10px;
       font-weight: 700;
-      font-size: 1rem;
+      font-size: 1.1rem;
       color: var(--gray-800);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+      border: 1px solid rgba(255, 255, 255, 0.4);
       transform-style: preserve-3d;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      white-space: nowrap;
     }
 
     .planet-1 { 
-      top: 0; left: 50%; 
-      transform: translate(-50%, -50%) rotateX(-60deg); 
-      background: rgba(255,255,255,0.9);
+      top: -10%; left: 60%; 
+      transform: translate(-50%, -50%); 
+      background: rgba(255, 255, 255, 0.85);
       color: #2563eb;
+      animation: float-planet 6s ease-in-out infinite alternate;
     }
     
     .planet-2 { 
-      bottom: 10%; right: -10%; 
-      transform: translate(50%, 50%) rotateX(-60deg); 
-      background: rgba(255,255,255,0.9);
+      bottom: -15%; right: -20%; 
+      transform: translate(50%, 50%); 
+      background: rgba(255, 255, 255, 0.85);
       color: #7c3aed;
+      animation: float-planet 7s ease-in-out infinite alternate-reverse;
     }
     
     .planet-3 { 
-      top: 30%; left: -20%; 
-      transform: translate(-50%, -50%) rotateX(-60deg); 
-      background: rgba(255,255,255,0.9);
+      top: 40%; left: -40%; 
+      transform: translate(-50%, -50%); 
+      background: rgba(255, 255, 255, 0.85);
       color: #db2777;
+      animation: float-planet 8s ease-in-out infinite alternate;
     }
 
     /* Animations */
@@ -725,9 +732,15 @@ import { environment } from '../../../environments/environment';
       100% { background-position: 0% 50%; }
     }
 
-    @keyframes rotate-slow {
-      from { transform: rotateY(0deg); }
-      to { transform: rotateY(360deg); }
+    @keyframes wobble-slow {
+      0% { transform: rotateY(-15deg) rotateX(5deg); }
+      50% { transform: rotateY(15deg) rotateX(-5deg); }
+      100% { transform: rotateY(-15deg) rotateX(5deg); }
+    }
+
+    @keyframes float-planet {
+      0% { transform: translate(-50%, -50%) translateY(0px) scale(1); }
+      100% { transform: translate(-50%, -50%) translateY(-20px) scale(1.05); }
     }
 
     @keyframes spin-forward {

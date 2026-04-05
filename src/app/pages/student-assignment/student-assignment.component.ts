@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { catchError, of } from 'rxjs';
+import { catchError, lastValueFrom, of } from 'rxjs';
 import { AssignmentService } from '../../core/services/assignment.service';
 import { ProgressService } from '../../core/services/progress.service';
 import { StudentService } from '../../core/services/student.service';
@@ -25,7 +25,7 @@ interface PlacedWord {
 
 interface CellData {
   correct: string;
-  number?: number;
+  numbers: number[];
   wordKeys: string[];
 }
 
@@ -210,101 +210,228 @@ interface AiFeedback {
                     </div>
                   }
 
-                  <!-- Matching (one-to-many, supports images) -->
+                  <!-- Matching: drag-and-drop -->
                   @if (getQuestionType(q) === 'matching') {
-                    <div class="match-wrap">
-                      <!-- Left term: image or text -->
-                      @if (isImageUrl(q.question_text)) {
-                        <div class="match-term-img">
-                          <img [src]="q.question_text" alt="term">
+                    <div class="match-dnd-layout">
+                      <!-- Left: term + drop zone -->
+                      <div class="match-dnd-left">
+                        @if (isImageUrl(q.question_text)) {
+                          <div class="match-dnd-term-img">
+                            <img [src]="q.question_text" alt="term">
+                          </div>
+                        }
+                        <div class="match-drop-zone"
+                             (dragover)="$event.preventDefault()"
+                             (drop)="onMatchDrop($event, q.id)">
+                          @for (opt of getMatchPlaced(q.id); track opt) {
+                            <div class="match-chip placed"
+                                 draggable="true"
+                                 (dragstart)="onMatchDragStart($event, opt, q.id)"
+                                 (click)="onMatchPlacedClick(q.id, opt)">
+                              @if (isImageUrl(opt)) {
+                                <img [src]="opt" alt="">
+                              } @else {
+                                <span>{{ opt }}</span>
+                              }
+                              <mat-icon class="chip-rm">close</mat-icon>
+                            </div>
+                          }
+                          @if (!getMatchPlaced(q.id).length) {
+                            <div class="match-drop-hint">
+                              <mat-icon>drag_indicator</mat-icon>
+                              Bu yerga tashlang
+                            </div>
+                          }
                         </div>
-                      }
-                      <p class="match-hint">
-                        <mat-icon>info</mat-icon>
-                        Mos keladigan barcha variantlarni belgilang
-                      </p>
-                      <div class="match-opts">
-                        @for (opt of matchPool(q); track opt) {
-                          <label class="option match-opt"
-                            [class.selected]="isMatchSelected(q.id, opt)"
-                            (click)="toggleMatch(q.id, opt)">
-                            <input type="checkbox" style="display:none"
-                              [checked]="isMatchSelected(q.id, opt)">
-                            <span class="match-check">
-                              <mat-icon>{{ isMatchSelected(q.id, opt) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
-                            </span>
+                      </div>
+                      <!-- Right: shuffled pool -->
+                      <div class="match-dnd-right">
+                        @for (opt of matchPoolRemaining(q); track opt) {
+                          <div class="match-chip pool"
+                               draggable="true"
+                               (dragstart)="onMatchDragStart($event, opt, null)"
+                               (click)="onMatchPoolClick(q.id, opt)">
                             @if (isImageUrl(opt)) {
-                              <img class="match-opt-img" [src]="opt" alt="option">
+                              <img [src]="opt" alt="">
                             } @else {
-                              <span class="opt-text">{{ opt }}</span>
+                              <span>{{ opt }}</span>
                             }
-                          </label>
+                          </div>
                         }
                       </div>
                     </div>
                   }
 
-                  <!-- Crossword Grid -->
+                  <!-- Crossword: Image Overlay Mode -->
                   @if (getQuestionType(q) === 'crossword') {
                     <div class="cw-wrap">
-                      <!-- Grid -->
-                      <div class="cw-grid-outer">
-                        @for (row of getCrosswordGrid(q).rows; track row) {
-                          <div class="cw-row">
-                            @for (col of getCrosswordGrid(q).cols; track col) {
-                              @if (getCellData(q, row, col); as cell) {
-                                <div class="cw-cell"
-                                  [class.cw-cell-correct]="getCellStatus(q.id, row, col) === 'correct'"
-                                  [class.cw-cell-wrong]="getCellStatus(q.id, row, col) === 'wrong'"
-                                  [class.cw-cell-empty]="getCellStatus(q.id, row, col) === 'empty'">
-                                  @if (cell.number) {
-                                    <span class="cw-cell-num">{{ cell.number }}</span>
-                                  }
-                                  <input
-                                    class="cw-cell-input"
-                                    maxlength="1"
-                                    [id]="'cw_' + q.id + '_' + row + '_' + col"
-                                    [value]="getCellValue(q.id, row, col)"
-                                    (keydown)="onCwKeydown($event, q, row, col)"
-                                    (input)="onCwInput($event, q, row, col)">
+                      @if (q.question_data?.grid_image && hasCwCoords(q)) {
+                        <!-- Image + input overlay -->
+                        <div class="cw-img-container" [style.position]="'relative'" [style.display]="'inline-block'">
+                          <img [src]="q.question_data.grid_image" class="cw-bg-img" alt="krossvord">
+                          @for (clue of getCrosswordClues(q); track clue.number) {
+                            @for (li of cwRange(clue.answer.length); track li) {
+                              @let cfg = q.question_data.grid_config || {};
+                              @let cw = cfg.cellW || 36;
+                              @let ch = cfg.cellH || 36;
+                              @let ox = cfg.offsetX || 0;
+                              @let oy = cfg.offsetY || 0;
+                              @let cellR = clue.direction === 'down' ? clue.row + li : clue.row;
+                              @let cellC = clue.direction === 'across' ? clue.col + li : clue.col;
+                              @let cellKey = clue.number + '_' + clue.direction + '_' + li;
+                              <div class="cw-ov-cell"
+                                [class.cw-ov-correct]="getOvCellStatus(q, clue, li) === 'correct'"
+                                [class.cw-ov-wrong]="getOvCellStatus(q, clue, li) === 'wrong'"
+                                [style.left.px]="ox + cellC * cw"
+                                [style.top.px]="oy + cellR * ch"
+                                [style.width.px]="cw - 2"
+                                [style.height.px]="ch - 2">
+                                @if (li === 0) {
+                                  <span class="cw-ov-num">{{ clue.number }}</span>
+                                }
+                                <input class="cw-ov-input"
+                                  maxlength="1"
+                                  [id]="'ov_' + q.id + '_' + cellKey"
+                                  [value]="getOvCellValue(q.id, clue, li)"
+                                  (input)="setOvCellValue($event, q, clue, li)">
+                              </div>
+                            }
+                          }
+                        </div>
+                        <!-- Clues list -->
+                        <div class="cw-clues-section">
+                          @if (getCrosswordClues(q, 'across').length > 0) {
+                            <div class="cw-clues-group">
+                              <div class="cw-clues-title">→ Gorizontal</div>
+                              @for (clue of getCrosswordClues(q, 'across'); track clue.number) {
+                                <div class="cw-clue-row-item">
+                                  <span class="cw-clue-num">{{ clue.number }}.</span>
+                                  <span class="cw-clue-text">{{ clue.text }}</span>
                                 </div>
-                              } @else {
-                                <div class="cw-cell cw-cell-empty-space"></div>
                               }
-                            }
-                          </div>
-                        }
-                      </div>
-                      <!-- Clues list -->
-                      <div class="cw-clues-section">
-                        @if (getCrosswordClues(q, 'across').length > 0) {
-                          <div class="cw-clues-group">
-                            <div class="cw-clues-title">→ Gorizontal</div>
-                            @for (clue of getCrosswordClues(q, 'across'); track clue.number) {
-                              <div class="cw-clue-row-item">
-                                <span class="cw-clue-num">{{ clue.number }}.</span>
-                                <span class="cw-clue-text">{{ clue.text }}</span>
+                            </div>
+                          }
+                          @if (getCrosswordClues(q, 'down').length > 0) {
+                            <div class="cw-clues-group">
+                              <div class="cw-clues-title">↓ Vertikal</div>
+                              @for (clue of getCrosswordClues(q, 'down'); track clue.number) {
+                                <div class="cw-clue-row-item">
+                                  <span class="cw-clue-num">{{ clue.number }}.</span>
+                                  <span class="cw-clue-text">{{ clue.text }}</span>
+                                </div>
+                              }
+                            </div>
+                          }
+                        </div>
+                        <button class="cw-check-btn" (click)="checkCrosswordOv(q)">
+                          <mat-icon>check_circle</mat-icon> Tekshirish
+                        </button>
+                      } @else {
+                        <!-- Auto-grid fallback (image yo'q yoki koordinatalar yo'q) -->
+                        <div class="cw-grid-outer">
+                          @for (row of getCrosswordGrid(q).rows; track row) {
+                            <div class="cw-row">
+                              @for (col of getCrosswordGrid(q).cols; track col) {
+                                @if (getCellData(q, row, col); as cell) {
+                                  <div class="cw-cell"
+                                    [class.cw-cell-correct]="getCellStatus(q.id, row, col) === 'correct'"
+                                    [class.cw-cell-wrong]="getCellStatus(q.id, row, col) === 'wrong'"
+                                    [class.cw-cell-empty]="getCellStatus(q.id, row, col) === 'empty'">
+                                    @if (cell.numbers.length) { <span class="cw-cell-num">{{ cell.numbers[0] }}</span> }
+                                    <input class="cw-cell-input" maxlength="1"
+                                      [id]="'cw_' + q.id + '_' + row + '_' + col"
+                                      [value]="getCellValue(q.id, row, col)"
+                                      (keydown)="onCwKeydown($event, q, row, col)"
+                                      (input)="onCwInput($event, q, row, col)">
+                                  </div>
+                                } @else {
+                                  <div class="cw-cell cw-cell-empty-space"></div>
+                                }
+                              }
+                            </div>
+                          }
+                        </div>
+                        <div class="cw-clues-section">
+                          @if (getCrosswordClues(q, 'across').length > 0) {
+                            <div class="cw-clues-group">
+                              <div class="cw-clues-title">→ Gorizontal</div>
+                              @for (clue of getCrosswordClues(q, 'across'); track clue.number) {
+                                <div class="cw-clue-row-item">
+                                  <span class="cw-clue-num">{{ clue.number }}.</span>
+                                  <span class="cw-clue-text">{{ clue.text }}</span>
+                                </div>
+                              }
+                            </div>
+                          }
+                          @if (getCrosswordClues(q, 'down').length > 0) {
+                            <div class="cw-clues-group">
+                              <div class="cw-clues-title">↓ Vertikal</div>
+                              @for (clue of getCrosswordClues(q, 'down'); track clue.number) {
+                                <div class="cw-clue-row-item">
+                                  <span class="cw-clue-num">{{ clue.number }}.</span>
+                                  <span class="cw-clue-text">{{ clue.text }}</span>
+                                </div>
+                              }
+                            </div>
+                          }
+                        </div>
+                        <button class="cw-check-btn" (click)="checkCrossword(q)">
+                          <mat-icon>check_circle</mat-icon> Tekshirish
+                        </button>
+                      }
+                    </div>
+                  }
+
+                  <!-- Word Search -->
+                  @if (getQuestionType(q) === 'word_search') {
+                    <div class="ws-wrap">
+                      @if (!wsGetGrid(q).length || !wsGetWordList(q).length) {
+                        <div class="ws-no-grid">
+                          <mat-icon>info</mat-icon>
+                          So'z izlash jadvali hali yaratilmagan. O'qituvchi savolni qayta sozlashi kerak.
+                        </div>
+                      } @else {
+                      <div class="ws-grid-container" [attr.data-qid]="q.id">
+                        @for (row of wsGetGrid(q); track $index; let ri = $index) {
+                          <div class="ws-row">
+                            @for (cell of row; track $index; let ci = $index) {
+                              <div class="ws-cell"
+                                [class.ws-cell-selecting]="wsIsSelecting(q.id, ri, ci)"
+                                (click)="wsOnCellClick(q, ri, ci)">
+                                {{ cell }}
                               </div>
                             }
                           </div>
                         }
-                        @if (getCrosswordClues(q, 'down').length > 0) {
-                          <div class="cw-clues-group">
-                            <div class="cw-clues-title">↓ Vertikal</div>
-                            @for (clue of getCrosswordClues(q, 'down'); track clue.number) {
-                              <div class="cw-clue-row-item">
-                                <span class="cw-clue-num">{{ clue.number }}.</span>
-                                <span class="cw-clue-text">{{ clue.text }}</span>
-                              </div>
+                        <!-- Highlights for found words -->
+                        @for (hl of wsGetHighlights(q); track hl.key) {
+                          <div class="ws-highlight"
+                            [style.left.px]="hl.x" [style.top.px]="hl.y"
+                            [style.width.px]="hl.w" [style.height.px]="hl.h"
+                            [style.border-color]="hl.color"
+                            [style.background-color]="hl.color + '30'">
+                          </div>
+                        }
+                      </div>
+                      <!-- Found words list -->
+                      <div class="ws-words-list">
+                        @for (w of wsGetWordList(q); track w.text; let wi = $index) {
+                          <div class="ws-word-item" [class.ws-word-found]="wsIsFound(q.id, w.text)">
+                            <span class="ws-word-num">{{ wi + 1 }}.</span>
+                            @if (wsIsFound(q.id, w.text)) {
+                              <span class="ws-word-text ws-found-text">{{ w.text }}</span>
+                              <mat-icon class="ws-check">check_circle</mat-icon>
+                            } @else {
+                              <span class="ws-word-text">{{ '_'.repeat(w.text.length) }}</span>
                             }
                           </div>
                         }
                       </div>
-                      <!-- Check button -->
-                      <button class="cw-check-btn" (click)="checkCrossword(q)">
-                        <mat-icon>check_circle</mat-icon>
-                        Tekshirish
-                      </button>
+                      <p class="ws-hint">
+                        <mat-icon>info</mat-icon>
+                        {{ wsFoundCount(q.id) }} / {{ wsGetWordList(q).length }} so'z topildi
+                      </p>
+                      } <!-- end @else -->
                     </div>
                   }
 
@@ -600,8 +727,8 @@ interface AiFeedback {
                                 [class.cw-cell-correct]="userLetter === cell.correct"
                                 [class.cw-cell-wrong]="userLetter && userLetter !== cell.correct"
                                 [class.cw-cell-empty]="!userLetter">
-                                @if (cell.number) {
-                                  <span class="cw-cell-num">{{ cell.number }}</span>
+                                @if (cell.numbers.length) {
+                                  <span class="cw-cell-num">{{ cell.numbers[0] }}</span>
                                 }
                                 <div class="cw-cell-review-letter">{{ userLetter || '?' }}</div>
                               </div>
@@ -759,33 +886,58 @@ interface AiFeedback {
     .q-img { max-width: 100%; max-height: 200px; border-radius: 8px; object-fit: contain; }
     .q-text-muted { color: #94a3b8; font-size: 0.85rem; font-style: italic; }
 
-    /* Matching */
-    .match-wrap { display: flex; flex-direction: column; gap: 10px; }
-    .match-term-img {
+    /* Matching drag-and-drop */
+    .match-dnd-layout {
+      display: flex; gap: 16px; align-items: flex-start;
+      @media (max-width: 600px) { flex-direction: column; }
+    }
+    .match-dnd-left {
+      flex: 1; display: flex; flex-direction: column; gap: 10px;
+    }
+    .match-dnd-term-img {
       display: flex; justify-content: center;
-      padding: 12px; background: #f8fafc; border-radius: 12px;
-      border: 1.5px solid #e2e8f0; margin-bottom: 4px;
-      img { max-width: 100%; max-height: 180px; object-fit: contain; border-radius: 8px; }
+      padding: 10px; background: #f8fafc; border-radius: 12px;
+      border: 1.5px solid #e2e8f0;
+      img { max-width: 100%; max-height: 160px; object-fit: contain; border-radius: 8px; }
     }
-    .match-hint {
-      display: flex; align-items: center; gap: 6px; margin: 0;
-      font-size: 0.8rem; color: #92400e; background: #fef3c7;
-      padding: 8px 12px; border-radius: 8px;
-      mat-icon { font-size: 15px; width: 15px; height: 15px; flex-shrink: 0; }
+    .match-drop-zone {
+      min-height: 80px; border: 2px dashed #c7d2fe; border-radius: 12px;
+      background: #eef2ff; padding: 10px; display: flex;
+      flex-wrap: wrap; gap: 8px; align-items: flex-start;
+      transition: border-color 0.2s, background 0.2s;
+      &:hover { border-color: #6366f1; background: #e0e7ff; }
     }
-    .match-opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-    .match-opt {
-      align-items: flex-start; padding: 8px;
-      &.selected { border-color: #10b981; background: #f0fdf4; color: #065f46; font-weight: 600; }
-      &.selected .match-check mat-icon { color: #10b981; }
+    .match-drop-hint {
+      display: flex; align-items: center; gap: 6px; color: #a5b4fc;
+      font-size: 0.85rem; width: 100%; justify-content: center; padding: 8px 0;
+      mat-icon { font-size: 18px; width: 18px; height: 18px; }
     }
-    .match-check {
-      flex-shrink: 0; align-self: flex-start;
-      mat-icon { font-size: 22px; width: 22px; height: 22px; color: #cbd5e1; }
+    .match-dnd-right {
+      flex: 1; display: flex; flex-wrap: wrap; gap: 8px;
+      align-content: flex-start;
+      background: #f8fafc; border: 1.5px solid #e2e8f0;
+      border-radius: 12px; padding: 10px; min-height: 80px;
     }
-    .match-opt-img {
-      width: 100%; max-height: 100px; object-fit: contain;
-      border-radius: 6px; margin-top: 4px;
+    .match-chip {
+      display: flex; align-items: center; gap: 6px;
+      border-radius: 8px; padding: 6px 10px;
+      cursor: grab; user-select: none; font-size: 0.88rem;
+      transition: transform 0.15s, box-shadow 0.15s;
+      &:active { cursor: grabbing; transform: scale(0.97); }
+      img { max-height: 70px; max-width: 100px; object-fit: contain; border-radius: 6px; }
+    }
+    .match-chip.pool {
+      background: #dbeafe; color: #1e40af; border: 1.5px solid #93c5fd;
+      &:hover { background: #bfdbfe; box-shadow: 0 2px 8px rgba(99,102,241,0.15); }
+    }
+    .match-chip.placed {
+      background: #d1fae5; color: #065f46; border: 1.5px solid #6ee7b7;
+      &:hover { background: #a7f3d0; }
+    }
+    .chip-rm {
+      font-size: 15px; width: 15px; height: 15px;
+      color: #6ee7b7; flex-shrink: 0; cursor: pointer;
+      &:hover { color: #ef4444; }
     }
 
     /* Text answer */
@@ -975,13 +1127,33 @@ interface AiFeedback {
 
     .cw-wrap { display: flex; flex-direction: column; gap: 16px; }
 
+    /* Image overlay mode */
+    .cw-img-container { display: inline-block; position: relative; max-width: 100%; overflow: auto; }
+    .cw-bg-img { display: block; max-width: 100%; border-radius: 10px; }
+    .cw-ov-cell {
+      position: absolute; background: rgba(255,255,255,0.85);
+      border: 1.5px solid #475569; border-radius: 2px; box-sizing: border-box;
+    }
+    .cw-ov-correct { background: rgba(220,252,231,0.92) !important; border-color: #16a34a !important; }
+    .cw-ov-wrong   { background: rgba(254,226,226,0.92) !important; border-color: #dc2626 !important; }
+    .cw-ov-num {
+      position: absolute; top: 1px; left: 2px;
+      font-size: 8px; font-weight: 700; color: #1e293b; line-height: 1; pointer-events: none;
+    }
+    .cw-ov-input {
+      width: 100%; height: 100%; border: none; outline: none;
+      background: transparent; text-align: center;
+      font-size: 14px; font-weight: 700; text-transform: uppercase;
+      color: #1e293b; padding: 0; cursor: text; font-family: inherit;
+    }
+
     .cw-grid-outer { display: inline-flex; flex-direction: column; gap: 1px; overflow-x: auto; }
     .cw-row { display: flex; gap: 1px; }
     .cw-cell {
       width: 36px; height: 36px; border: 1.5px solid #94a3b8;
       position: relative; background: #fff; flex-shrink: 0;
     }
-    .cw-cell-empty-space { width: 36px; height: 36px; background: transparent; flex-shrink: 0; }
+    .cw-cell-empty-space { width: 36px; height: 36px; background: #94a3b8; border-radius: 2px; flex-shrink: 0; }
     .cw-cell-correct { background: #dcfce7 !important; border-color: #16a34a; }
     .cw-cell-wrong { background: #fee2e2 !important; border-color: #dc2626; }
     .cw-cell-empty { background: #fef9c3 !important; border-color: #ca8a04; }
@@ -1031,6 +1203,49 @@ interface AiFeedback {
     .cw-cell-review-letter { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; text-transform: uppercase; }
     .btn-back { display: inline-flex; align-items: center; gap: 6px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
     .btn-back:hover { background: #e2e8f0; }
+
+    /* Word Search */
+    .ws-no-grid {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 16px; background: #fef9c3; border: 1px solid #fde047;
+      border-radius: 10px; font-size: 13px; color: #854d0e;
+      mat-icon { font-size: 18px; width: 18px; height: 18px; color: #ca8a04; flex-shrink: 0; }
+    }
+    .ws-wrap { display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }
+    .ws-grid-container {
+      position: relative; display: inline-flex; flex-direction: column;
+      border: 2px solid #e2e8f0; border-radius: 8px; overflow: visible;
+      user-select: none;
+    }
+    .ws-row { display: flex; }
+    .ws-cell {
+      width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: #1e293b; cursor: pointer;
+      border: 1px solid #f1f5f9; text-transform: uppercase;
+      position: relative; z-index: 1; transition: background 0.1s;
+      &:hover { background: #ede9fe; }
+      &.ws-cell-selecting { background: #c7d2fe !important; color: #4338ca; z-index: 2; }
+    }
+    .ws-highlight {
+      position: absolute; pointer-events: none;
+      border: 3px solid; border-radius: 20px; z-index: 0;
+    }
+    .ws-words-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ws-word-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px; background: #f8fafc; border: 1.5px solid #e2e8f0;
+      border-radius: 8px; font-size: 14px;
+      &.ws-word-found { background: #f0fdf4; border-color: #86efac; }
+    }
+    .ws-word-num { color: #94a3b8; font-size: 12px; }
+    .ws-word-text { font-weight: 600; color: #1e293b; letter-spacing: 0.05em; }
+    .ws-found-text { color: #16a34a; text-decoration: line-through; }
+    .ws-check { font-size: 16px !important; width: 16px !important; height: 16px !important; color: #16a34a; }
+    .ws-hint {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; color: #64748b; margin: 0;
+      mat-icon { font-size: 15px; width: 15px; height: 15px; }
+    }
   `]
 })
 export class StudentAssignmentComponent implements OnInit {
@@ -1275,6 +1490,64 @@ export class StudentAssignmentComponent implements OnInit {
     }
 
     this.phase.set('result');
+    this.updateLessonCompletion(); // async, fire-and-forget
+  }
+
+  /** After each submission, recalculate lesson completion percent from all assignments' best attempts */
+  private async updateLessonCompletion() {
+    const lessonId = this.lessonId;
+    if (!lessonId) return;
+    const student = this.studentService.getCurrentStudent();
+    if (!student) return;
+
+    try {
+      // Load all assignments in this lesson
+      const assignments = await lastValueFrom(
+        this.assignmentService.getAll(lessonId).pipe(catchError(() => of([])))
+      );
+      if (!assignments.length) return;
+
+      // Load student's attempts (backend returns only current user's)
+      const allAttempts = await lastValueFrom(
+        this.progressService.getAttempts({ student_id: student.id }).pipe(catchError(() => of([])))
+      );
+
+      // For each assignment, find the best (highest) submitted attempt percentage
+      let totalPct = 0;
+      for (const asgn of assignments) {
+        const submitted = allAttempts.filter((a: any) =>
+          a.assignment === asgn.id && a.submitted_at
+        );
+        if (submitted.length > 0) {
+          const best = Math.max(...submitted.map((a: any) => a.percentage ?? 0));
+          totalPct += best;
+        }
+        // Unanswered assignments count as 0
+      }
+
+      const avgPct = Math.round(totalPct / assignments.length);
+      console.log(`[LessonCompletion] lesson=${lessonId} avgPct=${avgPct}% (${assignments.length} assignments)`);
+
+      // Update or create StudentLessonProgress for this lesson
+      const progressList = await lastValueFrom(
+        this.progressService.getLessonProgress({ student_id: student.id }).pipe(catchError(() => of([])))
+      );
+      const existing = progressList.find((p: any) => p.lesson === lessonId);
+
+      if (existing) {
+        this.progressService.patchLessonProgress(existing.id, { completion_percent: avgPct })
+          .pipe(catchError(() => of(null))).subscribe();
+      } else {
+        this.progressService.createLessonProgress({
+          lesson: lessonId,
+          student: student.id,
+          is_unlocked: true,
+          completion_percent: avgPct,
+        } as any).pipe(catchError(() => of(null))).subscribe();
+      }
+    } catch (e) {
+      console.error('[updateLessonCompletion]', e);
+    }
   }
 
   formatDate(dateStr?: string): string {
@@ -1361,6 +1634,82 @@ export class StudentAssignmentComponent implements OnInit {
     }
   }
 
+  // ── Matching drag-and-drop helpers ──────────────────────────────
+  private matchDragOpt = '';
+  private matchDragFromQid: string | null = null;
+
+  getMatchPlaced(qId: string): string[] {
+    const ans = this.answersMap.get(qId);
+    return Array.isArray(ans) ? ans : [];
+  }
+
+  matchPoolRemaining(q: AssignmentQuestion): string[] {
+    const placed = this.getMatchPlaced(q.id);
+    return this.matchPool(q).filter(opt => !placed.includes(opt));
+  }
+
+  onMatchDragStart(event: DragEvent, opt: string, fromQid: string | null) {
+    this.matchDragOpt = opt;
+    this.matchDragFromQid = fromQid;
+    if (event.dataTransfer) {
+      event.dataTransfer.setData('text/plain', opt);
+      event.dataTransfer.effectAllowed = 'move';
+    }
+  }
+
+  onMatchDrop(event: DragEvent, qId: string) {
+    event.preventDefault();
+    const opt = this.matchDragOpt;
+    const fromQid = this.matchDragFromQid;
+    if (!opt) return;
+    // Remove from source placed zone if dragging between questions
+    if (fromQid && fromQid !== qId) {
+      const srcPlaced = this.getMatchPlaced(fromQid).filter(o => o !== opt);
+      this.answersMap.set(fromQid, srcPlaced);
+      if (!srcPlaced.length) this.answeredCount.update(n => Math.max(0, n - 1));
+      this.saveMatchAnswer(fromQid, srcPlaced);
+    }
+    this.placeMatchOpt(qId, opt);
+    this.matchDragOpt = '';
+    this.matchDragFromQid = null;
+  }
+
+  onMatchPoolClick(qId: string, opt: string) {
+    this.placeMatchOpt(qId, opt);
+  }
+
+  onMatchPlacedClick(qId: string, opt: string) {
+    const updated = this.getMatchPlaced(qId).filter(o => o !== opt);
+    const wasAnswered = this.isAnswered(qId);
+    this.answersMap.set(qId, updated);
+    if (wasAnswered && !updated.length) this.answeredCount.update(n => Math.max(0, n - 1));
+    this.saveMatchAnswer(qId, updated);
+  }
+
+  private placeMatchOpt(qId: string, opt: string) {
+    const current = this.getMatchPlaced(qId);
+    if (current.includes(opt)) return;
+    const updated = [...current, opt];
+    const wasAnswered = this.isAnswered(qId);
+    this.answersMap.set(qId, updated);
+    if (!wasAnswered) this.answeredCount.update(n => n + 1);
+    this.saveMatchAnswer(qId, updated);
+  }
+
+  private saveMatchAnswer(qId: string, selected: string[]) {
+    const att = this.attempt();
+    if (!att) return;
+    const answerId = this.savedAnswerIds.get(qId);
+    if (answerId) {
+      this.progressService.patchAnswer(answerId, { answer_data: { selected } })
+        .pipe(catchError(() => of(null))).subscribe();
+    } else {
+      this.progressService.saveAnswer({ attempt: att.id, question: qId, answer_data: { selected } })
+        .pipe(catchError(() => of(null)))
+        .subscribe(res => { if (res?.id) this.savedAnswerIds.set(qId, res.id); });
+    }
+  }
+
   getTypeIcon(): string {
     const type = this.assignment()?.assignment_type;
     const name = (typeof type === 'object' ? type?.name : '') || '';
@@ -1398,20 +1747,65 @@ export class StudentAssignmentComponent implements OnInit {
       const existing = grid.get(key);
       if (existing) {
         if (!existing.wordKeys.includes(wordKey)) existing.wordKeys.push(wordKey);
+        if (num != null && !existing.numbers.includes(num)) {
+          existing.numbers.push(num);
+          existing.numbers.sort((a, b) => a - b);
+        }
       } else {
-        grid.set(key, { correct: letter, number: num, wordKeys: [wordKey] });
+        grid.set(key, { correct: letter, numbers: num != null ? [num] : [], wordKeys: [wordKey] });
       }
     };
 
+    // Bir xil yo'nalishdagi so'zlar kesisha olmaydi — faqat perpendicular
     const canPlace = (word: string, dir: 'across' | 'down', row: number, col: number): boolean => {
+      if (row < 0 || col < 0) return false;
+      // Boshlanish oldidagi katak bo'sh bo'lishi kerak
+      const preR = dir === 'across' ? row : row - 1;
+      const preC = dir === 'across' ? col - 1 : col;
+      if (preR >= 0 && preC >= 0 && grid.has(`${preR}_${preC}`)) return false;
+      // Tugash keyingi katak bo'sh bo'lishi kerak
+      const postR = dir === 'across' ? row : row + word.length;
+      const postC = dir === 'across' ? col + word.length : col;
+      if (grid.has(`${postR}_${postC}`)) return false;
+
+      let intersections = 0;
       for (let i = 0; i < word.length; i++) {
         const r = dir === 'across' ? row : row + i;
         const c = dir === 'across' ? col + i : col;
         const key = `${r}_${c}`;
         const cell = grid.get(key);
-        if (cell && cell.correct !== word[i]) return false;
+        if (cell) {
+          if (cell.correct !== word[i]) return false;
+          // Faqat perpendicular so'z bilan kesishish mumkin
+          const hasParallel = cell.wordKeys.some(wk => {
+            const p = placed.find(pp => `${pp.number}_${pp.direction}` === wk);
+            return p?.direction === dir;
+          });
+          if (hasParallel) return false;
+          intersections++;
+        } else {
+          // Parallel qo'shni katak bo'lmasligi kerak
+          if (dir === 'across') {
+            const aboveKey = `${r - 1}_${c}`, belowKey = `${r + 1}_${c}`;
+            if (grid.has(aboveKey) || grid.has(belowKey)) {
+              // Qo'shni katak faqat perpendicular (down) bo'lsa ok, parallel (across) bo'lsa xato
+              const aboveCell = grid.get(aboveKey), belowCell = grid.get(belowKey);
+              const checkParallel = (cl: CellData | undefined) =>
+                cl?.wordKeys.some(wk => placed.find(pp => `${pp.number}_${pp.direction}` === wk)?.direction === 'across');
+              if (checkParallel(aboveCell) || checkParallel(belowCell)) return false;
+            }
+          } else {
+            const leftKey = `${r}_${c - 1}`, rightKey = `${r}_${c + 1}`;
+            if (grid.has(leftKey) || grid.has(rightKey)) {
+              const leftCell = grid.get(leftKey), rightCell = grid.get(rightKey);
+              const checkParallel = (cl: CellData | undefined) =>
+                cl?.wordKeys.some(wk => placed.find(pp => `${pp.number}_${pp.direction}` === wk)?.direction === 'down');
+              if (checkParallel(leftCell) || checkParallel(rightCell)) return false;
+            }
+          }
+        }
       }
-      return true;
+      return intersections > 0;
     };
 
     const placeWord = (pw: PlacedWord) => {
@@ -1430,21 +1824,24 @@ export class StudentAssignmentComponent implements OnInit {
 
     if (!words.length) return { placed, grid };
 
-    const OFFSET = 20;
+    const OFFSET = 5;
     const first = words[0];
-    const firstDir = first.direction === 'across' || first.direction === 'down' ? first.direction : 'across';
+    const firstDir: 'across' | 'down' = first.direction === 'down' ? 'down' : 'across';
     placeWord({ ...first, direction: firstDir, row: OFFSET, col: OFFSET });
 
     for (let wi = 1; wi < words.length; wi++) {
       const w = words[wi];
-      let bestDir: 'across' | 'down' = w.direction === 'across' || w.direction === 'down' ? w.direction : 'across';
+      const wDir: 'across' | 'down' = w.direction === 'down' ? 'down' : 'across';
+      const perpDir: 'across' | 'down' = wDir === 'across' ? 'down' : 'across';
       let found = false;
 
-      for (const pw of placed) {
+      // Avval o'qituvchi belgilagan yo'nalish, keyin teskari
+      for (const tryDir of [wDir, perpDir]) {
         if (found) break;
-        const dirs: ('across' | 'down')[] = bestDir === 'across' ? ['down', 'across'] : ['across', 'down'];
-        for (const tryDir of dirs) {
+        for (const pw of placed) {
           if (found) break;
+          // Faqat perpendicular joylashgan so'zlar bilan kesishish
+          if (pw.direction === tryDir) continue;
           for (let ai = 0; ai < pw.answer.length; ai++) {
             if (found) break;
             for (let bi = 0; bi < w.answer.length; bi++) {
@@ -1464,9 +1861,11 @@ export class StudentAssignmentComponent implements OnInit {
       }
 
       if (!found) {
-        const rows = [...grid.keys()].map(k => parseInt(k.split('_')[0]));
-        const maxRow = rows.length ? Math.max(...rows) : OFFSET;
-        placeWord({ ...w, direction: bestDir, row: maxRow + 3, col: OFFSET });
+        // Alohida joylashtirish — grid chegarasiga yaqin
+        const allKeys = [...grid.keys()];
+        const maxRow = allKeys.length ? Math.max(...allKeys.map(k => +k.split('_')[0])) : OFFSET;
+        const minCol = allKeys.length ? Math.min(...allKeys.map(k => +k.split('_')[1])) : OFFSET;
+        placeWord({ ...w, direction: wDir, row: maxRow + 2, col: minCol });
       }
     }
 
@@ -1624,10 +2023,94 @@ export class StudentAssignmentComponent implements OnInit {
     }
   }
 
-  getCrosswordClues(q: AssignmentQuestion, direction: 'across' | 'down') {
-    return (q.question_data?.clues || [])
-      .filter((c: any) => c.direction === direction)
-      .sort((a: any, b: any) => a.number - b.number);
+  getCrosswordClues(q: AssignmentQuestion, direction?: 'across' | 'down') {
+    const clues = (q.question_data?.clues || []).sort((a: any, b: any) => a.number - b.number);
+    return direction ? clues.filter((c: any) => c.direction === direction) : clues;
+  }
+
+  // ── Overlay (image-based) crossword helpers ─────────────────
+  hasCwCoords(q: any): boolean {
+    return (q.question_data?.clues || []).every((c: any) => c.row != null && c.col != null);
+  }
+
+  cwRange(n: number): number[] {
+    return Array.from({ length: Math.max(0, n) }, (_, i) => i);
+  }
+
+  private ovKey(clue: any, li: number): string {
+    return `${clue.number}_${clue.direction}_${li}`;
+  }
+
+  getOvCellValue(qId: string, clue: any, li: number): string {
+    const cells: Record<string, string> = this.answersMap.get(qId) || {};
+    return cells[this.ovKey(clue, li)] || '';
+  }
+
+  setOvCellValue(event: Event, q: any, clue: any, li: number) {
+    const input = event.target as HTMLInputElement;
+    const val = input.value.toUpperCase().slice(-1);
+    input.value = val;
+
+    const cells: Record<string, string> = { ...(this.answersMap.get(q.id) || {}) };
+    cells[this.ovKey(clue, li)] = val;
+
+    const wasAnswered = this.isAnswered(q.id);
+    this.answersMap.set(q.id, cells);
+    if (!wasAnswered) this.answeredCount.update(n => n + 1);
+
+    // Next cell focus
+    const next = li + 1;
+    if (next < clue.answer.length) {
+      const nextId = `ov_${q.id}_${clue.number}_${clue.direction}_${next}`;
+      setTimeout(() => (document.getElementById(nextId) as HTMLInputElement)?.focus(), 0);
+    }
+
+    const att = this.attempt();
+    if (!att) return;
+    const answerId = this.savedAnswerIds.get(q.id);
+    if (answerId) {
+      this.progressService.patchAnswer(answerId, { answer_data: { cells } }).pipe(catchError(() => of(null))).subscribe();
+    } else {
+      this.progressService.saveAnswer({ attempt: att.id, question: q.id, answer_data: { cells } })
+        .pipe(catchError(() => of(null)))
+        .subscribe(res => { if (res?.id) this.savedAnswerIds.set(q.id, res.id); });
+    }
+  }
+
+  private ovChecked = signal<Map<string, Map<string, 'correct' | 'wrong' | 'empty'>>>(new Map());
+
+  getOvCellStatus(q: any, clue: any, li: number): 'correct' | 'wrong' | 'empty' | null {
+    return this.ovChecked().get(q.id)?.get(this.ovKey(clue, li)) ?? null;
+  }
+
+  checkCrosswordOv(q: any) {
+    const clues: any[] = q.question_data?.clues || [];
+    const cells: Record<string, string> = this.answersMap.get(q.id) || {};
+    const statusMap = new Map<string, 'correct' | 'wrong' | 'empty'>();
+    let correctWords = 0;
+
+    for (const clue of clues) {
+      const answer: string = (clue.answer || '').toUpperCase();
+      let allCorrect = true;
+      for (let i = 0; i < answer.length; i++) {
+        const key = this.ovKey(clue, i);
+        const typed = (cells[key] || '').toUpperCase();
+        if (!typed) { statusMap.set(key, 'empty'); allCorrect = false; }
+        else if (typed === answer[i]) statusMap.set(key, 'correct');
+        else { statusMap.set(key, 'wrong'); allCorrect = false; }
+      }
+      if (allCorrect) correctWords++;
+    }
+
+    this.ovChecked.update(m => { const nm = new Map(m); nm.set(q.id, statusMap); return nm; });
+
+    const score = clues.length > 0 ? Math.round((correctWords / clues.length) * q.points) : 0;
+    const att = this.attempt();
+    const answerId = this.savedAnswerIds.get(q.id);
+    if (att && answerId) {
+      this.progressService.patchAnswer(answerId, { points_earned: score, is_correct: score === q.points })
+        .pipe(catchError(() => of(null))).subscribe();
+    }
   }
 
   // ── Table Fill helpers ─────────────────────────────────────
@@ -1710,6 +2193,174 @@ export class StudentAssignmentComponent implements OnInit {
     this.fuFiles.delete(q.id);
     if (this.isAnswered(q.id)) this.answeredCount.update(n => Math.max(0, n - 1));
     this.answersMap.delete(q.id);
+  }
+
+  // ── Word Search helpers ────────────────────────────────────
+  private readonly WS_CELL_SIZE = 36;
+  private readonly WS_COLORS = [
+    '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4',
+    '#6366f1', '#ec4899', '#8b5cf6', '#14b8a6', '#f43f5e'
+  ];
+
+  private wsFoundWords = signal<Map<string, Set<string>>>(new Map());
+  private wsSelStart = signal<{ qId: string; r: number; c: number } | null>(null);
+  private wsSelCells = signal<{ qId: string; cells: Set<string> } | null>(null);
+
+  wsGetGrid(q: any): string[][] {
+    return q.question_data?.grid || [];
+  }
+
+  wsGetWordList(q: any): { text: string; row: number; col: number; dir: string }[] {
+    return q.question_data?.words || [];
+  }
+
+  wsIsFound(qId: string, text: string): boolean {
+    return this.wsFoundWords().get(qId)?.has(text.toUpperCase()) ?? false;
+  }
+
+  wsFoundCount(qId: string): number {
+    return this.wsFoundWords().get(qId)?.size ?? 0;
+  }
+
+  wsIsSelecting(qId: string, r: number, c: number): boolean {
+    const sel = this.wsSelCells();
+    if (!sel || sel.qId !== qId) return false;
+    return sel.cells.has(`${r}_${c}`);
+  }
+
+  wsOnCellClick(q: any, r: number, c: number) {
+    const qId = q.id;
+    const start = this.wsSelStart();
+
+    if (!start || start.qId !== qId) {
+      // First click: mark start
+      this.wsSelStart.set({ qId, r, c });
+      this.wsSelCells.set({ qId, cells: new Set([`${r}_${c}`]) });
+      return;
+    }
+
+    // Same cell clicked again: cancel selection
+    if (start.r === r && start.c === c) {
+      this.wsSelStart.set(null);
+      this.wsSelCells.set(null);
+      return;
+    }
+
+    const dr = r - start.r;
+    const dc = c - start.c;
+
+    // Only allow straight lines: horizontal, vertical, or 45° diagonal
+    if (dr !== 0 && dc !== 0 && Math.abs(dr) !== Math.abs(dc)) {
+      // Not a straight direction — start fresh from current cell
+      this.wsSelStart.set({ qId, r, c });
+      this.wsSelCells.set({ qId, cells: new Set([`${r}_${c}`]) });
+      return;
+    }
+
+    const steps = Math.max(Math.abs(dr), Math.abs(dc));
+    // stepR/stepC will be exactly -1, 0, or 1
+    const stepR = dr === 0 ? 0 : dr / steps;
+    const stepC = dc === 0 ? 0 : dc / steps;
+
+    const cells = new Set<string>();
+    for (let i = 0; i <= steps; i++) {
+      cells.add(`${start.r + i * stepR}_${start.c + i * stepC}`);
+    }
+
+    // Build selected letter string
+    const grid = this.wsGetGrid(q);
+    let selected = '';
+    for (let i = 0; i <= steps; i++) {
+      const row = start.r + i * stepR;
+      const col = start.c + i * stepC;
+      if (row >= 0 && row < grid.length && col >= 0 && col < (grid[row]?.length ?? 0)) {
+        selected += (grid[row][col] || '').toUpperCase();
+      }
+    }
+
+    // Check against word list (forward and backward)
+    const words = this.wsGetWordList(q);
+    const rev = selected.split('').reverse().join('');
+    const matched = words.find(w =>
+      w.text.toUpperCase() === selected || w.text.toUpperCase() === rev
+    );
+
+    if (matched) {
+      this.wsFoundWords.update(m => {
+        const nm = new Map(m);
+        const s = new Set(nm.get(qId) ?? []);
+        s.add(matched.text.toUpperCase());
+        nm.set(qId, s);
+        return nm;
+      });
+      this.wsMarkAnswered(q);
+    }
+
+    // Reset selection regardless of match
+    this.wsSelStart.set(null);
+    this.wsSelCells.set(null);
+  }
+
+  private wsMarkAnswered(q: any) {
+    const qId = q.id;
+    const foundSet = this.wsFoundWords().get(qId) ?? new Set<string>();
+    const foundArr = [...foundSet];
+    const total = this.wsGetWordList(q).length;
+    const score = total > 0 ? Math.round((foundArr.length / total) * q.points) : 0;
+
+    const wasAnswered = this.isAnswered(qId);
+    this.answersMap.set(qId, { found: foundArr });
+    if (!wasAnswered && foundArr.length > 0) this.answeredCount.update(n => n + 1);
+
+    const att = this.attempt();
+    if (!att) return;
+
+    const data = { found: foundArr };
+    const answerId = this.savedAnswerIds.get(qId);
+    if (answerId) {
+      this.progressService.patchAnswer(answerId, {
+        answer_data: data, points_earned: score, is_correct: foundArr.length === total
+      }).pipe(catchError(() => of(null))).subscribe();
+    } else {
+      this.progressService.saveAnswer({ attempt: att.id, question: qId, answer_data: data })
+        .pipe(catchError(() => of(null)))
+        .subscribe(res => {
+          if (res?.id) {
+            this.savedAnswerIds.set(qId, res.id);
+            this.progressService.patchAnswer(res.id, {
+              points_earned: score, is_correct: foundArr.length === total
+            }).pipe(catchError(() => of(null))).subscribe();
+          }
+        });
+    }
+  }
+
+  wsGetHighlights(q: any): { x: number; y: number; w: number; h: number; color: string; key: string }[] {
+    const S = this.WS_CELL_SIZE;
+    const words = this.wsGetWordList(q);
+    const foundSet = this.wsFoundWords().get(q.id) ?? new Set<string>();
+    const result: { x: number; y: number; w: number; h: number; color: string; key: string }[] = [];
+
+    words.forEach((word, idx) => {
+      if (!foundSet.has(word.text.toUpperCase())) return;
+      const color = this.WS_COLORS[idx % this.WS_COLORS.length];
+      const len = word.text.length;
+      const dir = (word.dir || 'across').toLowerCase();
+
+      let w: number, h: number;
+      if (dir === 'down' || dir === 'v' || dir === 'vertical') {
+        w = S; h = len * S;
+      } else if (dir === 'diagonal' || dir === 'd') {
+        w = len * S; h = len * S;
+      } else {
+        // across / h / horizontal (default)
+        w = len * S; h = S;
+      }
+
+      result.push({ x: word.col * S, y: word.row * S, w, h, color, key: word.text });
+    });
+
+    return result;
   }
 
   safe(html: string): SafeHtml {

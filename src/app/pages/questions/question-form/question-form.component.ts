@@ -3,11 +3,13 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
+import { HttpClient } from '@angular/common/http';
 import { QuestionService } from '../../../core/services/question.service';
 import { AssignmentService } from '../../../core/services/assignment.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { RichEditorComponent } from '../../../shared/components/rich-editor/rich-editor.component';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-question-form',
@@ -205,10 +207,20 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
 
                 <div class="options-list">
                   @for (opt of matchCorrects; track $index; let i = $index) {
-                    <div class="option-row correct-row">
+                    <div class="option-row correct-row match-opt-row">
                       <mat-icon class="match-icon-correct">check_circle</mat-icon>
-                      <input class="opt-input" [(ngModel)]="matchCorrects[i]" [name]="'mc_' + i"
-                             placeholder="To'g'ri javob {{ i + 1 }}">
+                      <div class="match-val-wrap">
+                        @if (isImageUrl(matchCorrects[i])) {
+                          <img [src]="matchCorrects[i]" class="match-thumb" alt="rasm">
+                        }
+                        <input class="opt-input" [(ngModel)]="matchCorrects[i]" [name]="'mc_' + i"
+                               placeholder="Matn yoki rasm URL...">
+                      </div>
+                      <label class="match-upload-btn" [for]="'mc_img_' + i" title="Rasm yuklash">
+                        <mat-icon>image</mat-icon>
+                        <input type="file" [id]="'mc_img_' + i" accept="image/*" style="display:none"
+                               (change)="uploadMatchImage($event, matchCorrects, i)">
+                      </label>
                       <button class="opt-del" type="button" (click)="removeMatchCorrect(i)">
                         <mat-icon>close</mat-icon>
                       </button>
@@ -230,10 +242,20 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
 
                 <div class="options-list">
                   @for (opt of matchDistractors; track $index; let i = $index) {
-                    <div class="option-row">
+                    <div class="option-row match-opt-row">
                       <mat-icon class="match-icon-wrong">close</mat-icon>
-                      <input class="opt-input" [(ngModel)]="matchDistractors[i]" [name]="'md_' + i"
-                             placeholder="Noto'g'ri variant {{ i + 1 }}">
+                      <div class="match-val-wrap">
+                        @if (isImageUrl(matchDistractors[i])) {
+                          <img [src]="matchDistractors[i]" class="match-thumb" alt="rasm">
+                        }
+                        <input class="opt-input" [(ngModel)]="matchDistractors[i]" [name]="'md_' + i"
+                               placeholder="Matn yoki rasm URL...">
+                      </div>
+                      <label class="match-upload-btn" [for]="'md_img_' + i" title="Rasm yuklash">
+                        <mat-icon>image</mat-icon>
+                        <input type="file" [id]="'md_img_' + i" accept="image/*" style="display:none"
+                               (change)="uploadMatchImage($event, matchDistractors, i)">
+                      </label>
                       <button class="opt-del" type="button" (click)="removeMatchDistractor(i)">
                         <mat-icon>close</mat-icon>
                       </button>
@@ -249,13 +271,13 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
 
             <!-- ═══ CROSSWORD ═══ -->
             @if (questionType() === 'crossword') {
-              <!-- Grid image -->
+              <!-- Grid image + config -->
               <div class="form-card">
                 <div class="card-title">
                   <div class="ct-icon indigo"><mat-icon>grid_on</mat-icon></div>
-                  <span>Krossvord rasmi</span>
+                  <span>Krossvord rasmi va sozlamalar</span>
                 </div>
-                <p class="card-hint">Krossvord panjara rasmini yuklang yoki URL kiriting</p>
+                <p class="card-hint">Krossvord rasmini yuklang, keyin katak o'lchami va ofsetni sozlang</p>
                 <div class="input-group">
                   <label>Rasm URL</label>
                   <div class="input-wrap">
@@ -264,8 +286,40 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
                            placeholder="https://... yoki /media/...">
                   </div>
                 </div>
+                <div class="cw-config-row">
+                  <div class="cw-config-item">
+                    <label>Katak eni (px)</label>
+                    <input type="number" [(ngModel)]="crosswordCellW" name="cw_cellW" min="20" max="80">
+                  </div>
+                  <div class="cw-config-item">
+                    <label>Katak bo'yi (px)</label>
+                    <input type="number" [(ngModel)]="crosswordCellH" name="cw_cellH" min="20" max="80">
+                  </div>
+                  <div class="cw-config-item">
+                    <label>Chap ofset (px)</label>
+                    <input type="number" [(ngModel)]="crosswordOffsetX" name="cw_offX" min="0">
+                  </div>
+                  <div class="cw-config-item">
+                    <label>Yuqori ofset (px)</label>
+                    <input type="number" [(ngModel)]="crosswordOffsetY" name="cw_offY" min="0">
+                  </div>
+                </div>
                 @if (crosswordGridImage) {
-                  <img [src]="crosswordGridImage" alt="krossvord" class="cw-preview-img">
+                  <div class="cw-overlay-preview" [style.position]="'relative'" [style.display]="'inline-block'">
+                    <img [src]="crosswordGridImage" alt="krossvord" class="cw-preview-img">
+                    @for (clue of crosswordClues; track $index) {
+                      @if (clue.answer && clue.row >= 0 && clue.col >= 0) {
+                        @for (li of cwRange(clue.answer.length); track li) {
+                          <div class="cw-preview-cell" [style.left.px]="crosswordOffsetX + (clue.direction === 'across' ? clue.col + li : clue.col) * crosswordCellW"
+                               [style.top.px]="crosswordOffsetY + (clue.direction === 'down' ? clue.row + li : clue.row) * crosswordCellH"
+                               [style.width.px]="crosswordCellW - 2"
+                               [style.height.px]="crosswordCellH - 2">
+                            @if (li === 0) { <span class="cw-preview-num">{{ clue.number }}</span> }
+                          </div>
+                        }
+                      }
+                    }
+                  </div>
                 }
               </div>
 
@@ -275,7 +329,7 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
                   <div class="ct-icon indigo"><mat-icon>format_list_numbered</mat-icon></div>
                   <span>Ko'rsatmalar (Clues)</span>
                 </div>
-                <p class="card-hint">Har bir raqam uchun ko'rsatma va to'g'ri javobni kiriting</p>
+                <p class="card-hint">Har bir so'z uchun boshlanish koordinatasi (qator/ustun 0 dan), yo'nalish, ko'rsatma va javobni kiriting</p>
 
                 <div class="cw-clues-list">
                   @for (clue of crosswordClues; track $index; let i = $index) {
@@ -287,6 +341,12 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
                           <option value="across">→ Gorizontal</option>
                           <option value="down">↓ Vertikal</option>
                         </select>
+                        <div class="cw-coord-wrap">
+                          <input type="number" class="cw-coord-input" [(ngModel)]="crosswordClues[i].row"
+                                 [name]="'cw_row_' + i" min="0" placeholder="Qator">
+                          <input type="number" class="cw-coord-input" [(ngModel)]="crosswordClues[i].col"
+                                 [name]="'cw_col_' + i" min="0" placeholder="Ustun">
+                        </div>
                       </div>
                       <div class="cw-text-wrap">
                         <input class="cw-clue-input" [(ngModel)]="crosswordClues[i].text"
@@ -461,6 +521,75 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
               </div>
             }
 
+            <!-- ═══ WORD SEARCH ═══ -->
+            @if (questionType() === 'word_search') {
+              <div class="form-card">
+                <div class="card-title">
+                  <div class="ct-icon" style="background:linear-gradient(135deg,#fb923c,#ea580c)"><mat-icon>search</mat-icon></div>
+                  <span>So'z izlash sozlamalari</span>
+                </div>
+                <p class="card-hint">So'zlar ro'yxatini kiriting (har qatorda bir so'z), keyin jadval yarating</p>
+
+                <div class="row-grid">
+                  <div class="input-group">
+                    <label>Qatorlar soni</label>
+                    <div class="input-wrap">
+                      <mat-icon>grid_on</mat-icon>
+                      <input type="number" [(ngModel)]="wsGridRows" name="ws_rows" min="8" max="20">
+                    </div>
+                  </div>
+                  <div class="input-group">
+                    <label>Ustunlar soni</label>
+                    <div class="input-wrap">
+                      <mat-icon>grid_on</mat-icon>
+                      <input type="number" [(ngModel)]="wsGridCols" name="ws_cols" min="8" max="20">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="input-group">
+                  <label>So'zlar ro'yxati (har qatorda bir so'z, katta harflarda)</label>
+                  <div class="input-wrap textarea-wrap">
+                    <mat-icon>list</mat-icon>
+                    <textarea [(ngModel)]="wsWordList" name="ws_words" rows="6"
+                              placeholder="KOMPYUTER&#10;KLAVIATURA&#10;MONITOR&#10;PRINTER&#10;SKANER"></textarea>
+                  </div>
+                </div>
+
+                <button type="button" class="add-option-btn" style="background:#fff7ed;color:#c2410c;border-color:#fed7aa" (click)="wsGenerate()">
+                  <mat-icon>auto_awesome</mat-icon>
+                  Jadval yaratish (Generatsiya)
+                </button>
+
+                @if (wsGeneratedGrid.length > 0) {
+                  <div class="ws-result">
+                    <div class="ws-placed-info">
+                      <strong>{{ wsPlacedWords.length }} / {{ wsWordListToArray().length }}</strong> so'z joylashtirildi
+                      @if (wsPlacedWords.length < wsWordListToArray().length) {
+                        <span class="ws-warn"> — Ayrim so'zlar joylashtirilamadi. Jadvalni kattalashtiring yoki so'zlarni qisqartiring.</span>
+                      }
+                    </div>
+                    <div class="ws-preview-grid">
+                      @for (row of wsGeneratedGrid; track $index; let ri = $index) {
+                        <div class="ws-prev-row">
+                          @for (cell of row; track $index; let ci = $index) {
+                            <div class="ws-prev-cell" [class.ws-prev-word]="wsIsCellInWord(ri, ci)">
+                              {{ cell }}
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                    <div class="ws-placed-words">
+                      @for (w of wsPlacedWords; track w.text) {
+                        <span class="ws-placed-tag">{{ w.text }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
             <!-- JSON Data (advanced) -->
             <div class="form-card collapsible" [class.open]="showAdvanced()">
               <div class="card-title clickable" (click)="showAdvanced.set(!showAdvanced())">
@@ -614,6 +743,24 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
                   </div>
                 }
 
+                <!-- Preview: Word Search -->
+                @if (questionType() === 'word_search') {
+                  <div class="prev-textarea-hint" style="background:#fff7ed;border-color:#fed7aa;color:#c2410c">
+                    <mat-icon style="color:#ea580c">search</mat-icon>
+                    {{ wsWordListToArray().length }} so'z izlash
+                    @if (wsGeneratedGrid.length > 0) {
+                      — {{ wsGridRows }}×{{ wsGridCols }} jadval
+                    }
+                  </div>
+                  @if (wsPlacedWords.length > 0) {
+                    <div class="ws-placed-words" style="margin-bottom:10px">
+                      @for (w of wsPlacedWords; track w.text) {
+                        <span class="ws-placed-tag">{{ w.text }}</span>
+                      }
+                    </div>
+                  }
+                }
+
                 <div class="prev-footer">
                   <span class="prev-badge">
                     <mat-icon>stars</mat-icon>
@@ -695,6 +842,7 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
       &.type-table_fill { background: #e0f2fe; color: #0369a1; }
       &.type-file_upload { background: #fce7f3; color: #9d174d; }
       &.type-code { background: #f3e8ff; color: #6b21a8; }
+      &.type-word_search { background: #fff7ed; color: #c2410c; }
     }
 
     /* Layout */
@@ -796,6 +944,23 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
 
     .match-icon-correct { font-size: 20px; width: 20px; height: 20px; color: #10b981; flex-shrink: 0; }
     .match-icon-wrong { font-size: 20px; width: 20px; height: 20px; color: #ef4444; flex-shrink: 0; }
+
+    .match-opt-row { align-items: center; flex-wrap: nowrap; }
+    .match-val-wrap {
+      flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0;
+    }
+    .match-thumb {
+      max-height: 60px; max-width: 120px; object-fit: contain;
+      border-radius: 6px; border: 1px solid var(--gray-200); background: var(--gray-50);
+    }
+    .match-upload-btn {
+      width: 30px; height: 30px; flex-shrink: 0; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px; background: #eff6ff; border: 1px solid #bfdbfe;
+      color: #2563eb; transition: all 0.15s;
+      mat-icon { font-size: 17px; width: 17px; height: 17px; }
+      &:hover { background: #dbeafe; }
+    }
 
     .opt-letter {
       width: 26px; height: 26px; background: white; border: 1px solid var(--gray-200);
@@ -983,6 +1148,41 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
       &:focus { border-color: #059669; }
     }
 
+    .cw-config-row {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;
+    }
+    .cw-config-item {
+      display: flex; flex-direction: column; gap: 4px;
+      label { font-size: 0.78rem; font-weight: 600; color: var(--gray-600); }
+      input { width: 90px; padding: 6px 8px; border: 1px solid var(--gray-200); border-radius: 8px;
+              font-size: 0.88rem; outline: none; &:focus { border-color: #6366f1; } }
+    }
+
+    .cw-coord-wrap {
+      display: flex; gap: 4px; margin-top: 4px;
+    }
+    .cw-coord-input {
+      width: 52px; height: 30px; padding: 0 6px;
+      border: 1px solid var(--gray-200); border-radius: 8px;
+      background: white; font-size: 0.82rem; font-weight: 600;
+      outline: none; text-align: center;
+      &:focus { border-color: #6366f1; }
+    }
+
+    .cw-overlay-preview {
+      display: inline-block; position: relative; margin-top: 8px;
+    }
+    .cw-preview-cell {
+      position: absolute;
+      background: rgba(99, 102, 241, 0.25);
+      border: 1.5px solid #6366f1;
+      border-radius: 2px;
+    }
+    .cw-preview-num {
+      position: absolute; top: 1px; left: 2px;
+      font-size: 8px; font-weight: 700; color: #4338ca;
+    }
+
     .cw-prev-summary {
       display: flex; gap: 12px; margin-top: 8px;
       font-size: 0.8rem; font-weight: 600; color: #4f46e5;
@@ -1072,6 +1272,25 @@ import { RichEditorComponent } from '../../../shared/components/rich-editor/rich
       td { padding: 5px 8px; border: 1px solid var(--gray-200); color: var(--gray-700); }
     }
     .tf-prev-editable { background: #ecfdf5; color: #059669; font-style: italic; }
+
+    /* Word Search Editor */
+    .ws-result { display: flex; flex-direction: column; gap: 10px; }
+    .ws-placed-info { font-size: 13px; color: #64748b; }
+    .ws-warn { color: #c2410c; font-size: 12px; }
+    .ws-preview-grid { display: inline-flex; flex-direction: column; border: 1px solid #e2e8f0; border-radius: 6px; overflow: auto; }
+    .ws-prev-row { display: flex; }
+    .ws-prev-cell {
+      width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #94a3b8; border: 0.5px solid #f1f5f9;
+      text-transform: uppercase;
+      &.ws-prev-word { color: #1e293b; background: #fef3c7; }
+    }
+    .ws-placed-words { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ws-placed-tag {
+      padding: 3px 10px; background: #fff7ed; border: 1px solid #fed7aa;
+      border-radius: 100px; font-size: 12px; font-weight: 600; color: #c2410c;
+      text-transform: uppercase; letter-spacing: 0.03em;
+    }
   `]
 })
 export class QuestionFormComponent implements OnInit {
@@ -1080,6 +1299,7 @@ export class QuestionFormComponent implements OnInit {
   private questionService = inject(QuestionService);
   private assignmentService = inject(AssignmentService);
   private sanitizer = inject(DomSanitizer);
+  private http = inject(HttpClient);
 
   isEdit = signal(false);
   loading = signal(false);
@@ -1113,8 +1333,12 @@ export class QuestionFormComponent implements OnInit {
 
   // Crossword
   crosswordGridImage = '';
-  crosswordClues: { number: number; direction: 'across' | 'down'; text: string; answer: string }[] = [
-    { number: 1, direction: 'across', text: '', answer: '' }
+  crosswordCellW = 36;
+  crosswordCellH = 36;
+  crosswordOffsetX = 0;
+  crosswordOffsetY = 0;
+  crosswordClues: { number: number; direction: 'across' | 'down'; text: string; answer: string; row: number; col: number }[] = [
+    { number: 1, direction: 'across', text: '', answer: '', row: 0, col: 0 }
   ];
 
   // Table fill
@@ -1132,6 +1356,13 @@ export class QuestionFormComponent implements OnInit {
   codeLanguage = 'html';
   codeStarterCode = '';
 
+  // Word Search
+  wsWordList = '';
+  wsGridRows = 12;
+  wsGridCols = 12;
+  wsGeneratedGrid: string[][] = [];
+  wsPlacedWords: { text: string; row: number; col: number; dir: string }[] = [];
+
   questionDataStr = '{}';
   correctAnswerStr = '{}';
 
@@ -1145,6 +1376,7 @@ export class QuestionFormComponent implements OnInit {
       table_fill: 'table_chart',
       file_upload: 'upload_file',
       code: 'code',
+      word_search: 'search',
     };
     return map[this.questionType()] || 'quiz';
   }
@@ -1159,8 +1391,93 @@ export class QuestionFormComponent implements OnInit {
       table_fill: 'Jadval to\'ldirish',
       file_upload: 'Fayl yuklash',
       code: 'Kod yozish',
+      word_search: 'So\'z izlash',
     };
     return map[this.questionType()] || this.questionType();
+  }
+
+  // ── Word Search helpers ────────────────────────────────────
+  wsWordListToArray(): string[] {
+    return this.wsWordList.split('\n')
+      .map(w => w.trim().toUpperCase())
+      .filter(w => w.length > 0);
+  }
+
+  wsIsCellInWord(r: number, c: number): boolean {
+    return this.wsPlacedWords.some(w => {
+      for (let i = 0; i < w.text.length; i++) {
+        const wr = w.dir === 'down' ? w.row + i : w.row;
+        const wc = w.dir === 'across' ? w.col + i : w.col;
+        if (wr === r && wc === c) return true;
+      }
+      return false;
+    });
+  }
+
+  wsGenerate(): void {
+    const words = this.wsWordListToArray();
+    if (!words.length) { alert("Kamida bitta so'z kiriting!"); return; }
+
+    const ROWS = Math.max(8, Math.min(20, +this.wsGridRows || 12));
+    const COLS = Math.max(8, Math.min(20, +this.wsGridCols || 12));
+
+    // Check if any word is too long for the grid
+    const tooLong = words.filter(w => w.length > Math.max(ROWS, COLS));
+    if (tooLong.length) {
+      alert(`Bu so'zlar juda uzun: ${tooLong.join(', ')}. Jadval o'lchamini kattalashtiring.`);
+      return;
+    }
+
+    const grid: string[][] = Array.from({ length: ROWS }, () => Array(COLS).fill(''));
+    const placed: { text: string; row: number; col: number; dir: string }[] = [];
+
+    // Sort longest first to maximize placement success
+    const sorted = [...words].sort((a, b) => b.length - a.length);
+
+    for (const word of sorted) {
+      let placedWord = false;
+
+      // Shuffle directions and attempt multiple positions
+      for (let attempt = 0; attempt < 100 && !placedWord; attempt++) {
+        const dir = attempt % 2 === 0 ? 'across' : 'down';
+        const maxRow = dir === 'down' ? ROWS - word.length : ROWS - 1;
+        const maxCol = dir === 'across' ? COLS - word.length : COLS - 1;
+        if (maxRow < 0 || maxCol < 0) continue;
+
+        const row = Math.floor(Math.random() * (maxRow + 1));
+        const col = Math.floor(Math.random() * (maxCol + 1));
+
+        let fits = true;
+        for (let i = 0; i < word.length; i++) {
+          const r = dir === 'down' ? row + i : row;
+          const c = dir === 'across' ? col + i : col;
+          if (grid[r][c] !== '' && grid[r][c] !== word[i]) { fits = false; break; }
+        }
+
+        if (fits) {
+          for (let i = 0; i < word.length; i++) {
+            const r = dir === 'down' ? row + i : row;
+            const c = dir === 'across' ? col + i : col;
+            grid[r][c] = word[i];
+          }
+          placed.push({ text: word, row, col, dir });
+          placedWord = true;
+        }
+      }
+    }
+
+    // Fill empty cells with random letters
+    const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (!grid[r][c]) grid[r][c] = LETTERS[Math.floor(Math.random() * LETTERS.length)];
+      }
+    }
+
+    this.wsGeneratedGrid = grid;
+    this.wsPlacedWords = placed;
+    this.wsGridRows = ROWS;
+    this.wsGridCols = COLS;
   }
 
   safeHtml(html: string): SafeHtml {
@@ -1178,8 +1495,23 @@ export class QuestionFormComponent implements OnInit {
     );
   }
 
+  uploadMatchImage(event: Event, arr: string[], i: number): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    if ((environment as any).uploadToken) {
+      fd.append('_token', (environment as any).uploadToken);
+    }
+    this.http.post<any>((environment as any).uploadUrl, fd).subscribe({
+      next: (res) => { arr[i] = res.url || res.file || ''; },
+      error: () => alert('Rasm yuklanmadi')
+    });
+  }
+
   private detectQuestionType(typeName: string, graderType?: string): string {
     const n = (typeName + ' ' + (graderType || '')).toLowerCase();
+    if (n.includes('word_search') || n.includes('word search') || n.includes('so\'z izlash')) return 'word_search';
     if (n.includes('cross') || n.includes('kross')) return 'crossword';
     if (n.includes('table') || n.includes('jadval')) return 'table_fill';
     if (n.includes('file') || n.includes('upload') || n.includes('fayl')) return 'file_upload';
@@ -1252,12 +1584,13 @@ export class QuestionFormComponent implements OnInit {
   // ── Crossword helpers ──────────────────────────────────────
   addCrosswordClue(): void {
     const maxNum = this.crosswordClues.reduce((m, c) => Math.max(m, c.number), 0);
-    this.crosswordClues.push({ number: maxNum + 1, direction: 'across', text: '', answer: '' });
+    this.crosswordClues.push({ number: maxNum + 1, direction: 'across', text: '', answer: '', row: 0, col: 0 });
   }
   removeCrosswordClue(i: number): void { this.crosswordClues.splice(i, 1); }
 
   crosswordAcross(): typeof this.crosswordClues { return this.crosswordClues.filter(c => c.direction === 'across'); }
   crosswordDown(): typeof this.crosswordClues { return this.crosswordClues.filter(c => c.direction === 'down'); }
+  cwRange(n: number): number[] { return Array.from({ length: n }, (_, i) => i); }
 
   // ── JSON sync ──────────────────────────────────────────────
   syncToJson(): void {
@@ -1342,8 +1675,14 @@ export class QuestionFormComponent implements OnInit {
 
             } else if (qt === 'crossword') {
               this.crosswordGridImage = q.question_data?.grid_image || '';
+              this.crosswordCellW = q.question_data?.grid_config?.cellW ?? 36;
+              this.crosswordCellH = q.question_data?.grid_config?.cellH ?? 36;
+              this.crosswordOffsetX = q.question_data?.grid_config?.offsetX ?? 0;
+              this.crosswordOffsetY = q.question_data?.grid_config?.offsetY ?? 0;
               if (Array.isArray(q.question_data?.clues) && q.question_data.clues.length) {
-                this.crosswordClues = [...q.question_data.clues];
+                this.crosswordClues = q.question_data.clues.map((c: any) => ({
+                  ...c, row: c.row ?? 0, col: c.col ?? 0
+                }));
               }
             } else if (qt === 'table_fill') {
               if (Array.isArray(q.question_data?.headers)) {
@@ -1357,6 +1696,16 @@ export class QuestionFormComponent implements OnInit {
             } else if (qt === 'file_upload') {
               this.fuAccept = q.question_data?.accept || '';
               this.fuDescription = q.question_data?.description || '';
+            } else if (qt === 'word_search') {
+              if (Array.isArray(q.question_data?.words)) {
+                this.wsPlacedWords = q.question_data.words;
+                this.wsWordList = q.question_data.words.map((w: any) => w.text).join('\n');
+              }
+              if (Array.isArray(q.question_data?.grid) && q.question_data.grid.length) {
+                this.wsGeneratedGrid = q.question_data.grid;
+                this.wsGridRows = q.question_data.grid.length;
+                this.wsGridCols = q.question_data.grid[0]?.length || 12;
+              }
             } else if (qt === 'code') {
               this.codeLanguage = q.question_data?.language || 'html';
               this.codeStarterCode = q.question_data?.starter_code || '';
@@ -1431,7 +1780,17 @@ export class QuestionFormComponent implements OnInit {
 
     } else if (qt === 'crossword') {
       const clues = this.crosswordClues.filter(c => c.text.trim() && c.answer.trim());
-      questionData = { type: 'crossword', grid_image: this.crosswordGridImage, clues };
+      questionData = {
+        type: 'crossword',
+        grid_image: this.crosswordGridImage,
+        grid_config: {
+          cellW: this.crosswordCellW,
+          cellH: this.crosswordCellH,
+          offsetX: this.crosswordOffsetX,
+          offsetY: this.crosswordOffsetY,
+        },
+        clues
+      };
       const answerMap: Record<string, string> = {};
       clues.forEach(c => { answerMap[`${c.number}_${c.direction}`] = c.answer.toUpperCase(); });
       correctAnswer = answerMap;
@@ -1454,6 +1813,16 @@ export class QuestionFormComponent implements OnInit {
     } else if (qt === 'code') {
       questionData = { type: 'code', language: this.codeLanguage, starter_code: this.codeStarterCode };
       correctAnswer = this.sampleAnswer ? { answer: this.sampleAnswer } : {};
+
+    } else if (qt === 'word_search') {
+      if (!this.wsGeneratedGrid.length) {
+        alert("Avval jadval yarating!");
+        this.saving.set(false);
+        return;
+      }
+      const wsWords = this.wsPlacedWords.map(w => ({ ...w, text: w.text.toUpperCase() }));
+      questionData = { type: 'word_search', grid: this.wsGeneratedGrid, words: wsWords };
+      correctAnswer = { words: wsWords.map(w => w.text) };
 
     } else {
       // Fallback: use raw JSON fields
